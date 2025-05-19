@@ -1,0 +1,145 @@
+Краткий обзор
+Вы получаете:
+* Frontend: React + TypeScript + Vite для мгновенной сборки и HMR Mediumvitejs. 
+* Telegram Mini App SDK: telegram-web-app.js для авторизации, оплаты и взаимодействия с Canvas Telegram APIs. 
+* Realtime-синхронизация: PostgreSQL Realtime (WebSocket) для мгновенного обмена данными между игроками PostgreSQL 
+* TON Connect: клиентская JS-библиотека для создания и управления TON-кошельком пользователя Start | The Open NetworkGitHub. 
+* Backend: Node.js + PostgreSQL для API, авторизации и операций с БД PostgreSQL
+* 
+* Code Quality: ESLint + Prettier для единых стандартов кода DEV Community. 
+* Hosting: Cloudflare Pages — мгновенный деплой и глобальный CDN Cloudflare Pages. 
+
+1. Полный стек без кода
+* React + TypeScript + Vite: современный фронтенд со сверхбыстрой сборкой и HMR Mediumvitejs. 
+* Telegram Mini Apps JS SDK (telegram-web-app.js): интеграция с Telegram-клиентом, опции оплат и локальное хранилище Telegram APIs. 
+* TON Connect JS SDK (@tonconnect/sdk, @tonconnect/ui-react): создание и управление TON-кошельком, подтверждение транзакций Start | The Open NetworkGitHub. 
+
+    * PostgreSQL с таблицами, RLS и функциями. 
+    * Realtime: глобальный WebSocket-кластер для Broadcast, Presence и Postgres  
+* Backend: Node.js (Express/Fastify) + REST API, аутентификации и бизнес-логики PostgreSQL 
+* ESLint + Prettier: linting и форматирование на лету, настройки в .eslintrc.* и .prettierrc DEV Community. 
+* Cloudflare Pages: деплой фронтенда и Edge Functions (при необходимости) с мгновенным CDN и SSL Cloudflare Pages.  Create a secure user authentication flow in a Telegram application that:
+1. When a user enters the app:
+    * Allow anonymous record creation in public.users table
+    * Capture user's UUID and telegram_id
+2. Perform automatic verification:
+    * Check if user exists in auth.users table
+    * If no record exists:
+        * Copy UUID from public.users to auth.users
+        * Set telegram_id as phone in auth.users
+        * Copy username from public.users to display_name in auth.users
+3. Security requirements:
+    * Process should run automatically on each login
+    * No user intervention required
+    * Ensure users can only access their own records
+    * Maintain data consistency between public.users and auth.users tables
+Please provide the implementation logic to handle this authentication flow while maintaining data security and user privacy.
+* 
+
+2. Визуальная структура папок
+plaintext
+КопироватьРедактировать
+project-root/
+├─ public/                      # Статика (favicon, manifest, robots.txt)
+│   └─ index.html
+├─ src/                         # Frontend Web App
+│   ├─ assets/                  # Изображения, шрифты
+│   ├─ components/              # UI-компоненты (кнопки, карточки)
+│   ├─ hooks/                   # React hooks (useTelegram, useRealtime)
+│   ├─ pages/                   # Страницы: Home, Lobby, Game, Profile, Leaderboard
+│   ├─ services/                # API-клиенты: telegramSDK, PostgreSQL, tonConnect
+│   ├─ utils/                   # Утилиты: timeSync, validators
+│   ├─ App.tsx
+│   ├─ main.tsx
+│   └─ vite-env.d.ts
+├─ backend/                     # Опционально: локальный backend для тестов
+│   ├─ controllers/             # Логика маршрутов (rooms, users, payments)
+│   ├─ models/                  # ORM/клиент  (типизация таблиц)
+│   ├─ routes/                  # Express/Fastify роуты
+│   ├─ utils/                   # JWT verify, HMAC, rate-limit
+│   └─ index.ts                 # Точка входа сервера
+├─ functions/                   # ( Edge Functions) для webhook, cron-job
+│   └─ sendDailyLeaderboard.ts
+├─ tonconnect-manifest.json     # Манифест для TON Connect
+├─ .eslintrc.js                 # Конфиг ESLint
+├─ .prettierrc                  # Конфиг Prettier
+├─ tsconfig.json                # TypeScript config
+├─ package.json                 # Скрипты и зависимости
+.env
+└─ README.md
+*  
+Вот краткий список основных таблиц  и их роли:
+* users Хранит профиль: Telegram ID, имя, баланс Stars, флаг создания TON-кошелька. ↔ связана с wallets, participants, transactions, referrals. 
+* wallets Содержит TON-адреса пользователей и дату создания. ↔ FK → users.id; используется для выплат. 
+* rooms Описывает комнаты: тип (standard/bonus/hero), плата, макс. участников, статус. ↔ FK → users.id (creator); связана с participants, games. 
+* participants Записывает, кто и когда зашёл в какую комнату. ↔ FK → rooms.id и users.id. 
+* games Фиксирует каждый раунд: ссылка на room, время старта/конца, победитель. ↔ FK → rooms.id и users.id (winner); связана с taps. 
+* taps Счётчики тапов каждого игрока в конкретной игре. ↔ FK → games.id и users.id. 
+* transactions Логи движений средств: вход в игру, выплата, комиссия, реф-бонус. ↔ FK → users.id. 
+* referrals Хранит реф-коды и владельцев, размер бонуса за первую игру. ↔ FK → users.id; связана с referral_uses. 
+* referral_uses История активации реф-кодов: кто, чей код и когда использовал. ↔ code → referrals.code; FK → users.id. 
+* bonus_progress Отслеживает прогресс в бонусной комнате: сколько тапов сделано, таймер, статус выполнения. ↔ FK → users.id. 
+Взаимодействие: users ←→ wallets для выплат; users/rooms ←→ participants → games → taps для геймплея; transactions привязываются к users и отражают экономику; referrals ↔ referral_uses формируют систему бонусов; bonus_progress обеспечивает логику бонусной комнаты.
+  Ниже кратко перечислены все необходимые таблицы и их поля для  (PostgreSQL):
+1. users
+* id UUID PRIMARY KEY 
+* telegram_id BIGINT UNIQUE 
+* username TEXT 
+* balance_stars NUMERIC 
+* has_ton_wallet BOOLEAN 
+* created_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+2. wallets
+* id UUID PRIMARY KEY 
+* user_id UUID REFERENCES users(id) ON DELETE CASCADE 
+* ton_address TEXT UNIQUE 
+* created_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+3. rooms
+* id UUID PRIMARY KEY 
+* creator_id UUID REFERENCES users(id) 
+* type TEXT CHECK(type IN ('standard','bonus','hero')) 
+* entry_fee NUMERIC 
+* max_players INT 
+* status TEXT CHECK(status IN ('waiting','active','finished')) 
+* created_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+4. participants
+* id UUID PRIMARY KEY 
+* room_id UUID REFERENCES rooms(id) ON DELETE CASCADE 
+* user_id UUID REFERENCES users(id) 
+* joined_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+5. games
+* id UUID PRIMARY KEY 
+* room_id UUID REFERENCES rooms(id) ON DELETE CASCADE 
+* start_time TIMESTAMP WITH TIME ZONE 
+* end_time TIMESTAMP WITH TIME ZONE 
+* winner_id UUID REFERENCES users(id) 
+6. taps
+* id UUID PRIMARY KEY 
+* game_id UUID REFERENCES games(id) ON DELETE CASCADE 
+* user_id UUID REFERENCES users(id) 
+* count INT 
+* created_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+7. transactions
+* id UUID PRIMARY KEY 
+* user_id UUID REFERENCES users(id) 
+* amount NUMERIC 
+* type TEXT CHECK(type IN ('entry','payout','fee','referral')) 
+* description TEXT 
+* created_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+8. referrals
+* code TEXT PRIMARY KEY 
+* user_id UUID REFERENCES users(id) 
+* bonus_amount NUMERIC 
+* created_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+9. referral_uses
+* id UUID PRIMARY KEY 
+* code TEXT REFERENCES referrals(code) 
+* referred_user UUID REFERENCES users(id) 
+* used_at TIMESTAMP WITH TIME ZONE DEFAULT now() 
+10. bonus_progress
+* id UUID PRIMARY KEY 
+* user_id UUID REFERENCES users(id) 
+* taps_so_far BIGINT DEFAULT 0 
+* start_time TIMESTAMP WITH TIME ZONE 
+* end_time TIMESTAMP WITH TIME ZONE 
+* completed BOOLEAN DEFAULT FALSE 
+   Подробный сценарий того, что видит и как ощущает пользователь на каждом шаге, и какой экран появляется в ответ на его действия. 1. Главный экран приложения Что видит пользователь: * В шапке справа : аватарка, имя , баланс Stars   * Основной блок: шесть карточек комнат с ценой входа (20, 80, 120, 250, 380, 500 Stars).  * Внизу меню-панель с иконками: Home, Leaderboard, Profile, Create Room.  Варианты действий: 1. Нажать на карточку комнаты (например, «20 Stars»). * Переход → окно ожидания выбранной комнаты если на счету достаточно stars если stars не достаточно Открывается платежный модал Telegram Stars.  2. Переключиться на «Leaderboard». * Появляется топ-10 игроков за 24 ч.  3. Перейти в «Profile». * Открывается профиль с балансом, историей игр и рефералами и кнопкой пополнить , Нажать «Пополнить». * Открывается платежный модал Telegram Stars.  4. Перейти в «Create Room». * Экран с двумя предложениями создания своей Hero-комнаты или вход в Hero комнату по уникальному ключу создателя   2. Окно ожидания и игровой экран одновременно Что видит пользователь: * Название и стоимость комнаты.  * Текущий счётчик участников (0…10) и аватарки по полукругу.  * Текст: «Ожидаем X из 10 игроков».  Действия и реакции: * Автоматически добавляется в список участников сразу после оплаты. Предварительного в комнату не должно быть пользователь входит в комнату только если у него списалась сумма за участие в этой комнате   * При достижении 10 участников начинается отсчёт 10…0, и начинается игра * Если пользователь покидает ожидание, он возвращается на главный экран без компенсации средств . 3. Игровой экран Что видит пользователь: * Вверху — синхронизированный таймер (60 сек).  * По краю — прогресс-бары всех участников с аватарками.  * В центре — большая кнопка «TAP».  Действие: * Каждый тап мгновенно увеличивает локальный счётчик.  * Каждые ~50 мс батч из новых тапов уходит на сервер.  * Сервер присылает обновлённые значения всем игрокам — прогресс-бары плавно подстраиваются.  По завершении: * Когда таймер заканчивается или кто-то набирает 200 тапов, появляется экран результатов. И победитель выводится в средину кнопки по верх кнопки   * Отображается победитель, призовой фонд .  * Кнопка «В лобби» или «Сыграть ещё» когда пользователь нажимает кнопку в лобби он переходит на главное меню когда пользователь нажимает на кнопку сыграть еще происходит автоподбор в другую свободную комнату если спустя 3 секунды комната не подобрана то создается новая .  4. Hero-комната (Create Room / Join Room) 4.1. Создание * Поля: «Max участников (до 10)» и «Fee (Stars)».  * Кнопка «Создать» → генерируется ключ комнаты.  * Переход в окно ожидания Hero-комнаты (аналогично стандартной).  4.2. Вход по ключу * Поле ввода ключа + кнопка «Войти».  * При вводе валидного ключа и оплате — переход в окно ожидания - игровой экран .  5. Бонусная комната Что видит пользователь: * Кнопка «Start Bonus».  * Прогресс-бар: 0 / 1 000 000 тапов.  * Таймер: 24 ч (от старта).  Действия: * Нажимает «Start Bonus» → таймер запускается.  * Тапает; каждый тап идёт в локальный счётчик и в батче на сервер.  * При достижении миллиона внутри 24 ч — выдаются 3000 Stars и возвращение на Home.  * Если время вышло — «Попробовать снова» возвращает к кнопке Start.  6. Leaderboard Что видит пользователь: * Список топ-10 игроков за последние 24 ч.  * Для каждого: аватар, имя, сумма выигрыша.  * Фильтры «Сегодня» / «Неделя» / «Все время» в шапке.  7. Профиль Что видит пользователь: * Баланс Stars и адрес TON-кошелька.  * Статистика: игр сыграно, выиграно  * Реферальная секция: * Код ссылки.  * Список рефералов с датой регистрации и суммой их взносов.  * Итого получено бонусов (20 + 1 за игру).  Итого Каждое действие пользователя мгновенно приводит к понятному экрану: от выбора комнаты до результатов игры. Таймеры и прогресс синхронизированы через WebSocket/Re­­altime, а client-side prediction обеспечивает почти нулевую задержку при тапах — игра чувствуется «живой» и отзывчивой на 100 %.    VITE_TELEGRAM_BOT_TOKEN=7898785686:AAH1vkZ6mVW2B0_mJ5ZVZDeKo34hG9IOj_Y

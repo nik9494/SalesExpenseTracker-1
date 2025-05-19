@@ -1,0 +1,290 @@
+ Системная архитектура и инфраструктура
+1.1 Компоненты системы
+Diagram
+Code
+graph TD
+    A[Frontend: React] -->|HTTPS/WS| B[Backend: Node.js]
+    B --> C[(PostgreSQL)]
+    B --> D[TON Blockchain]
+    B --> E[Cloudflare Tunnel]
+    F[Telegram Bot] -->|WebView| A
+    G[Prometheus] --> B
+    H[Grafana] --> G
+    I[Cloudflare Pages] --> A
+1.2 Локальная разработка
+bash
+# Запуск фронтенда
+cloudflared tunnel --url http://localhost:5173 --hostname game-dev.example.com
+
+# Запуск бекенда
+cloudflared tunnel --url http://localhost:3001 --hostname api.game-dev.example.com
+2. База данных (PostgreSQL 15)
+2.1 Полная схема таблиц
+Diagram
+Code
+erDiagram
+    users ||--o{ participants : "1:N"
+    users ||--o{ transactions : "1:N"
+    users ||--o{ bonus_progress : "1:1"
+    rooms ||--o{ participants : "1:N"
+    rooms ||--o{ games : "1:N"
+    games ||--o{ taps : "1:N"
+
+    users {
+        uuid id PK
+        bigint telegram_id UK
+        varchar(32) username
+        numeric balance_stars
+        varchar(255) avatar_url
+        bool has_ton_wallet
+        timestamp created_at
+    }
+    
+    rooms {
+        uuid id PK
+        uuid creator_id FK
+        varchar(6) room_key
+        numeric entry_fee
+        varchar(10) type
+        varchar(10) status
+        int max_players
+        timestamp expires_at
+        numeric prize_pool
+    }
+    
+    participants {
+        uuid id PK
+        uuid room_id FK
+        uuid user_id FK
+        bool is_organizer
+        bool is_active
+        timestamp joined_at
+    }
+2.2 Критические индексы
+sql
+CREATE INDEX idx_rooms_active ON rooms (status, expires_at) 
+  WHERE status IN ('waiting', 'active');
+
+CREATE INDEX idx_taps_leaderboard ON taps (game_id, user_id, count DESC);
+3. Визуальный интерфейс и пользовательский флоу
+3.1 Основные экраны
+Главный экран
+Diagram
+Code
+graph TD
+    A[Шапка] --> B[Лого Chance Tap]
+    A --> C[Баланс: 1,200 ★]
+    A --> D[Аватар + имя]
+    E[Сетка комнат] --> F[Standard 20★]
+    E --> G[Hero 100★]
+    E --> H[Bonus]
+    I[Навигация] --> J[Лидеры]
+    I --> K[Профиль]
+    I --> L[Создать]
+Hero-комната (Ожидание)
+Diagram
+Code
+graph TD
+    A[Ключ: A1B2C3] --> B[Таймер: 4:32]
+    C[Список участников] --> D[Аватар + имя]
+    C --> E[Статус: Ожидание]
+    F[Кнопка 'Начать'] --> G[Только для организатора]
+    H[Чат] --> I[Эмодзи-реакции]
+Игровой процесс
+Diagram
+Code
+graph TD
+    A[Таймер: 0:27] --> B[Прогресс-бары игроков]
+    C[Кнопка TAP] --> D[Анимация нажатия]
+    E[Фон] --> F[Динамические эффекты]
+    G[Список игроков] --> H[Позиция в рейтинге]
+4. Логика комнат (детализация)
+4.1 Сравнение типов комнат
+Параметр	Standard	Hero	Bonus
+Создание	Авто	Ручное (ключ)	Индивидуальное
+Участники	До 10	До 30	1
+Таймер	60 сек игра	10 мин ожидание + 30 сек игра	24 часа
+Ставка	20-500 ★	Организатор: 0 ★
+Участники: 100+ ★	Бесплатно
+Призы	90% победителю	90% победителю
+7% организатору	3,000 ★
+4.2 Автоматизация процессов
+Diagram
+Code
+sequenceDiagram
+    participant Cron
+    participant DB
+    participant WS
+    
+    Cron->>DB: Каждые 5 мин: Проверка просроченных комнат
+    DB->>DB: UPDATE rooms SET status='expired'
+    DB->>WS: Уведомление участников
+    WS->>All: Возврат средств + переход в лобби
+5. Безопасность и валидация
+5.1 Многоуровневая защита
+python
+def validate_request(user_id, room_id):
+    # 1. Проверка JWT
+    if not verify_jwt(user_id):
+        raise AuthError()
+    
+    # 2. Проверка баланса
+    if get_balance(user_id) < get_entry_fee(room_id):
+        raise BalanceError()
+    
+    # 3. Античит-система
+    if is_cheater(user_id):
+        raise BanError()
+    
+    # 4. Гео-фильтрация
+    if is_vpn(user_ip):
+        raise GeoBlockError()
+5.2 Схема WebSocket-сообщений
+typescript
+interface GameState {
+  type: "game_update";
+  users: Array<{
+    id: string;
+    name: string;
+    progress: number;
+    avatar: string;
+    position: number;
+  }>;
+  timeLeft: number;
+  totalTaps: number;
+}
+6. Интеграция с TON Connect
+6.1 Процесс привязки кошелька
+Diagram
+Code
+sequenceDiagram
+    participant U as Пользователь
+    participant F as Frontend
+    participant T as TON Connect
+    participant B as Backend
+    
+    U->>F: Нажимает "Привязать кошелёк"
+    F->>T: Запрос подключения
+    T-->>F: QR-код/Deep Link
+    U->>T: Подтверждение в приложении
+    T->>F: Возврат адреса
+    F->>B: /api/wallets {address}
+    B->>DB: Обновление has_ton_wallet
+    B-->>F: Подтверждение
+7. Мониторинг и аналитика
+7.1 Ключевые метрики
+yaml
+metrics:
+  - name: api_response_time
+    type: histogram
+    labels: [endpoint, method]
+    buckets: [50, 100, 300, 500]
+  
+  - name: websocket_connections
+    type: gauge
+    labels: [room_type]
+  
+  - name: fraud_attempts
+    type: counter
+    labels: [type]
+8. CI/CD Pipeline
+8.1 Workflow GitHub Actions
+yaml
+name: Deploy
+on: [push]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm ci && npm run build
+      - uses: cloudflare/pages-action@1
+        with:
+          projectName: "chance-tap-frontend"
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/build-push-action@v2
+        with:
+          tags: user/app:latest
+          push: true
+9. Детализированный UI/UX
+9.1 Анимации и переходы
+Кнопка TAP:
+
+Эффект пульсации при активном тапе
+
+Параллакс-эффект при наведении
+
+Виброотдача на мобильных устройствах
+
+Прогресс-бары:
+
+Плавная анимация обновления
+
+Цветовая градация (зеленый → желтый → красный)
+
+Иконки достижений
+
+Уведомления:
+
+Анимация "плавающего сообщения"
+
+Интерактивные кнопки действий
+
+Автоматическое скрытие через 5 сек
+
+9.2 Адаптивный дизайн
+Diagram
+Code
+graph TD
+    A[Мобильные устройства] --> B[Вертикальный стек]
+    A --> C[Упрощённая навигация]
+    D[Планшеты] --> E[Двухколоночный макет]
+    F[Десктоп] --> G[Полноценный интерфейс]
+10. Тестирование и проверка
+10.1 Чек-лист основных сценариев
+gherkin
+Feature: Hero Room Flow
+
+  Scenario: Successful game with 2 players
+    Given Организатор создал комнату с entry_fee=100 ★
+    When Участник присоединяется по ключу
+    And Организатор запускает игру
+    Then Оба игрока видят обратный отсчёт
+    When Игрок А делает 150 тапов
+    And Игрок Б делает 200 тапов
+    Then Игрок Б объявляется победителем
+    And Призы распределяются:
+      | Получатель | Сумма |
+      | Победитель | 180 ★ |
+      | Организатор| 14 ★  |
+11. Дополнения и приложения
+11.1 Примеры запросов API
+Создание комнаты:
+
+http
+POST /api/v1/rooms
+Authorization: Bearer <JWT>
+Content-Type: application/json
+
+{
+  "type": "hero",
+  "entry_fee": 100
+}
+Ответ:
+
+json
+{
+  "room_key": "A1B2C3",
+  "expires_at": "2024-03-20T15:30:00Z",
+  "participants": []
+}
+11.2 Конфигурация окружения
+env
+# .env.production
+VITE_TELEGRAM_BOT_TOKEN=7898785686:AAH1vkZ6mVW2B0_mJ5ZVZDeKo34hG9IOj_Y
+JWT_SECRET=supersecretkey123
