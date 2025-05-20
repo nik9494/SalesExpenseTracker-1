@@ -21,13 +21,12 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey(),
   telegram_id: bigint("telegram_id", { mode: "number" }).notNull().unique(),
   username: text("username").notNull(),
-  balance_sch: numeric("balance_sch").notNull().default("0"), // Stars Chance Coin (SCH) - основная валюта
   balance_stars: numeric("balance_stars").notNull().default("0"), // Stars - внутриигровая наградная валюта
   has_ton_wallet: boolean("has_ton_wallet").notNull().default(false),
   photo_url: text("photo_url"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   referral_code: text("referral_code").notNull().unique(),
-  last_login: timestamp("last_login"),
+  
 });
 
 // Users relations
@@ -79,7 +78,7 @@ export const roomsRelations = relations(rooms, ({ one, many }) => ({
 // Participants table
 export const participants = pgTable("participants", {
   room_id: uuid("room_id").notNull().references(() => rooms.id, { onDelete: 'cascade' }),
-  user_id: uuid("user_id").notNull().references(() => users.id),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   joined_at: timestamp("joined_at").notNull().defaultNow(),
 }, (table) => {
   return {
@@ -116,7 +115,7 @@ export const gamesRelations = relations(games, ({ one, many }) => ({
 export const taps = pgTable("taps", {
   id: uuid("id").primaryKey(),
   game_id: uuid("game_id").notNull().references(() => games.id, { onDelete: 'cascade' }),
-  user_id: uuid("user_id").notNull().references(() => users.id),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   count: integer("count").notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
@@ -130,7 +129,7 @@ export const tapsRelations = relations(taps, ({ one }) => ({
 // Transactions table
 export const transactions = pgTable("transactions", {
   id: uuid("id").primaryKey(),
-  user_id: uuid("user_id").notNull().references(() => users.id),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   amount: numeric("amount").notNull(),
   type: text("type").notNull(),
   description: text("description"),
@@ -145,7 +144,7 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
 // Referrals table
 export const referrals = pgTable("referrals", {
   code: text("code").primaryKey(),
-  user_id: uuid("user_id").notNull().references(() => users.id),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   bonus_amount: numeric("bonus_amount").notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
@@ -160,7 +159,7 @@ export const referralsRelations = relations(referrals, ({ one, many }) => ({
 export const referralUses = pgTable("referral_uses", {
   id: uuid("id").primaryKey(),
   code: text("code").notNull().references(() => referrals.code),
-  referred_user: uuid("referred_user").notNull().references(() => users.id),
+  referred_user: uuid("referred_user").notNull().references(() => users.id, { onDelete: 'cascade' }),
   used_at: timestamp("used_at").notNull().defaultNow(),
 });
 
@@ -173,7 +172,7 @@ export const referralUsesRelations = relations(referralUses, ({ one }) => ({
 // Bonus progress table
 export const bonusProgress = pgTable("bonus_progress", {
   id: uuid("id").primaryKey(),
-  user_id: uuid("user_id").notNull().references(() => users.id),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   taps_so_far: bigint("taps_so_far", { mode: "number" }).notNull().default(0),
   start_time: timestamp("start_time").notNull(),
   end_time: timestamp("end_time").notNull(),
@@ -236,7 +235,7 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
 // Таблица для блокировок читеров
 export const cheatBlocks = pgTable("cheat_blocks", {
   id: uuid("id").primaryKey(),
-  user_id: uuid("user_id").notNull().references(() => users.id),
+  user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   game_id: uuid("game_id").references(() => games.id),
   reason: text("reason").notNull(),
   evidence: text("evidence"),

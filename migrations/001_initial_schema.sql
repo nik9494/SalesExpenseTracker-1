@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS wallets (
 -- Таблица игровых комнат
 CREATE TABLE IF NOT EXISTS rooms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  creator_id UUID NOT NULL REFERENCES users(id),
+  creator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type TEXT NOT NULL DEFAULT 'standard', -- standard, bonus, hero
   entry_fee NUMERIC NOT NULL,
   max_players INTEGER NOT NULL DEFAULT 4,
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 -- Таблица участников комнат
 CREATE TABLE IF NOT EXISTS participants (
   room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   joined_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   PRIMARY KEY (room_id, user_id)
 );
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS games (
   room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   start_time TIMESTAMP WITH TIME ZONE NOT NULL,
   end_time TIMESTAMP WITH TIME ZONE,
-  winner_id UUID REFERENCES users(id),
+  winner_id UUID REFERENCES users(id) ON DELETE SET NULL,
   prize_pool NUMERIC NOT NULL,
   duration INTEGER NOT NULL DEFAULT 60, -- Длительность игры в секундах
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS games (
 CREATE TABLE IF NOT EXISTS taps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   count INTEGER NOT NULL, -- Количество тапов в пакете
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS taps (
 -- Таблица транзакций
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   amount NUMERIC NOT NULL,
   type TEXT NOT NULL, -- entry, payout, fee, referral, payment, refund, bonus
   description TEXT,
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 -- Таблица рефералов
 CREATE TABLE IF NOT EXISTS referrals (
   code TEXT PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES users(id),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   bonus_amount NUMERIC NOT NULL, -- Процент или фиксированная сумма бонуса
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -87,15 +87,15 @@ CREATE TABLE IF NOT EXISTS referrals (
 -- Таблица использования рефералов
 CREATE TABLE IF NOT EXISTS referral_uses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code TEXT NOT NULL REFERENCES referrals(code),
-  referred_user UUID NOT NULL REFERENCES users(id),
+  code TEXT NOT NULL REFERENCES referrals(code) ON DELETE CASCADE,
+  referred_user UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   used_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Таблица прогресса бонусов
 CREATE TABLE IF NOT EXISTS bonus_progress (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   taps_so_far BIGINT NOT NULL DEFAULT 0,
   start_time TIMESTAMP WITH TIME ZONE NOT NULL,
   end_time TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -105,8 +105,8 @@ CREATE TABLE IF NOT EXISTS bonus_progress (
 -- Таблица блокировок по читам
 CREATE TABLE IF NOT EXISTS cheat_blocks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id),
-  game_id UUID NOT NULL REFERENCES games(id),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   reason TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );

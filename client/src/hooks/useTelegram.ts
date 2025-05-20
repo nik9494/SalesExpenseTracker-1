@@ -64,6 +64,20 @@ export const useTelegram = () => {
           }
           
           console.log('Authentication successful, setting isInitialized to true');
+          
+          // Show welcome message
+          webApp.showPopup({
+            title: 'Добро пожаловать в TapGame!',
+            message: 'Нажимайте на кнопку быстрее всех и выигрывайте призы!',
+            buttons: [{ type: 'ok' }]
+          });
+
+          // Set up main button
+          webApp.MainButton.text = 'Начать игру';
+          webApp.MainButton.show();
+          webApp.MainButton.onClick(() => {
+            window.location.href = '/';
+          });
           setIsInitialized(true);
         } catch (error) {
           console.error('Error authenticating user:', error);

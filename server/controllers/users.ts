@@ -29,60 +29,71 @@ const applyReferralSchema = z.object({
   code: z.string().min(4).max(10)
 });
 
+// Генерация и сохранение уникального кода
+async function createUniqueReferral(userId: string): Promise<string> {
+  let code: string;
+  do {
+    code = generateReferralCode();
+  } while (await storage.getReferral(code));
+  await storage.createReferral({
+    code,
+    user_id: userId,
+    bonus_amount: '10',
+    created_at: new Date(),
+  });
+  return code;
+}
+
 export function registerUserRoutes(app: Express, prefix: string) {
   // Telegram authentication
   app.post(`${prefix}/auth/telegram`, async (req: Request, res: Response) => {
     try {
       const { telegramData } = req.body;
-      
-      // Validate Telegram auth data
       const userData = validateTelegramAuth(telegramData);
       if (!userData) {
         return res.status(401).json({ message: "Invalid Telegram authentication" });
       }
-      
-      const { id: telegram_id, username, first_name, last_name, photo_url } = userData;
-      
-      // Check if user exists
-      let user = await storage.getUserByTelegramId(telegram_id);
-      
-      // Create user if not exists
-      if (!user) {
-        // Generate unique referral code
-        const referralCode = generateReferralCode(username || first_name || "user");
-        
-        user = await storage.createUser({
+      const { id: telegram_id, username, first_name, photo_url } = userData;
+      // Создаём или получаем пользователя
+      const user = await storage.getOrCreateUserByTelegramId(
+        telegram_id,
+        username || `${first_name || "User"}${telegram_id.toString().slice(-4)}`,
+        {
           id: uuidv4(),
-          telegram_id,
-          username: username || `${first_name || "User"}${telegram_id.toString().substr(-4)}`,
-          balance_stars: 100, // Starting balance
+          balance_stars: '100',
           has_ton_wallet: false,
-          photo_url: photo_url || null,
+          photo_url,
           created_at: new Date(),
-          referral_code: referralCode
-        });
-        
-        // Create referral entry
-        await storage.createReferral({
-          code: referralCode,
-          user_id: user.id,
-          bonus_amount: 10, // 10% of first game
-          created_at: new Date()
+          referral_code: '', // не передаём код, он будет создан отдельно
+        }
+      );
+      // Логика: если пользователь только что создан (created_at ≈ сейчас)
+      const isNew = Math.abs(new Date().getTime() - new Date(user.created_at).getTime()) < 5000;
+      if (isNew) {
+        const uniqueCode = await createUniqueReferral(user.id);
+        return res.json({
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            balance_stars: user.balance_stars,
+            has_ton_wallet: user.has_ton_wallet,
+            photo_url: user.photo_url,
+            referral_code: uniqueCode,
+          }
         });
       }
-      
-      // Create a session (in a real app, you'd generate a JWT here)
-      req.session.userId = user.id;
-      
-      res.json({ 
-        success: true, 
+      // Для старых пользователей просто отдаем существующие данные
+      res.json({
+        success: true,
         user: {
           id: user.id,
           username: user.username,
           balance_stars: user.balance_stars,
           has_ton_wallet: user.has_ton_wallet,
-          photo_url: user.photo_url
-        } 
+          photo_url: user.photo_url,
+          referral_code: user.referral_code,
+        }
       });
     } catch (error) {
       console.error("Authentication error:", error);
@@ -250,20 +261,20 @@ export function registerUserRoutes(app: Express, prefix: string) {
       
       // Update user balance
       await storage.updateUser(userId, {
-        balance_stars: user.balance_stars + amount
+        balance_stars: String(Number(user.balance_stars) + amount)
       });
       
       // Record transaction
       await storage.createTransaction({
         id: uuidv4(),
         user_id: userId,
-        amount,
+        amount: String(amount),
         type: "payment",
         description: `Added ${amount} Stars`,
         created_at: new Date()
       });
       
-      res.json({ success: true, new_balance: user.balance_stars + amount });
+      res.json({ success: true, new_balance: String(Number(user.balance_stars) + amount) });
     } catch (error) {
       console.error("Error adding stars:", error);
       res.status(500).json({ message: "Failed to add stars" });
@@ -307,14 +318,14 @@ export function registerUserRoutes(app: Express, prefix: string) {
         // Добавляем бонус рефереру при первой активации кода
         const bonusAmount = Number(referral.bonus_amount) || 50;
         await storage.updateUser(referral.user_id, {
-          balance_stars: referrer.balance_stars + bonusAmount
+          balance_stars: String(Number(referrer.balance_stars) + bonusAmount)
         });
         
         // Создаем транзакцию для рефера
         await storage.createTransaction({
           id: uuidv4(),
           user_id: referral.user_id,
-          amount: bonusAmount,
+          amount: String(bonusAmount),
           type: "referral",
           description: `Referral bonus from ${req.user!.username}`,
           created_at: new Date()

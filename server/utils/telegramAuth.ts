@@ -107,53 +107,43 @@ export function extractTelegramUserData(initData: string): any {
 export async function authenticateTelegram(req: Request, res: Response, next: NextFunction) {
   try {
     const { telegramData } = req.body;
-    
     if (!telegramData) {
       return res.status(400).json({ error: 'Отсутствуют данные Telegram' });
     }
-    
     // Проверяем валидность данных Telegram WebApp
     const isValid = validateTelegramWebAppData(telegramData);
-    
     if (!isValid && process.env.NODE_ENV === 'production') {
       return res.status(401).json({ error: 'Невалидные данные аутентификации Telegram' });
     }
-    
     // Извлекаем данные пользователя
     const userData = extractTelegramUserData(telegramData);
-    
     if (!userData) {
       return res.status(400).json({ error: 'Не удалось извлечь данные пользователя' });
     }
-    
-    // Ищем пользователя по Telegram ID
-    let user = await storage.getUserByTelegramId(userData.id);
-    
-    // Если пользователь не найден, создаем нового
-    if (!user) {
-      const referralCode = generateReferralCode();
-      
-      user = await storage.createUser({
+    // Получаем или создаём пользователя за единый вызов
+    const { id: telegram_id, username, first_name, photo_url } = userData;
+    const referralCode = (username || first_name || 'user') + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const user = await storage.getOrCreateUserByTelegramId(
+      telegram_id,
+      username || `${first_name || 'User'}${telegram_id.toString().slice(-4)}`,
+      {
         id: uuidv4(),
-        telegram_id: userData.id,
-        username: userData.username || `user${userData.id}`,
-        balance_stars: "0",
+        balance_stars: "100",
         has_ton_wallet: false,
-        photo_url: userData.photo_url,
+        photo_url,
         created_at: new Date(),
-        referral_code: referralCode
-      });
-      
-      // Создаем реферальную запись для нового пользователя
+        referral_code: referralCode,
+      }
+    );
+    // Если пользователь новый — создаём запись о реферале
+    if (user.created_at.getTime() === new Date().getTime()) {
       await storage.createReferral({
         code: referralCode,
         user_id: user.id,
-        bonus_amount: "50", // Стандартный бонус для рефералов
-        created_at: new Date()
+        bonus_amount: '50',
+        created_at: new Date(),
       });
     }
-    
-    // Добавляем данные пользователя в запрос
     req.user = user;
     next();
   } catch (error) {

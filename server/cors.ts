@@ -2,9 +2,8 @@ import cors from 'cors';
 
 export const corsOptions = {
   origin: [
-    'http://localhost:5173',  // Vite dev server
-    'http://localhost:3001',  // Ваш сервер
-    'https://*.trycloudflare.com',  // Cloudflare Tunnels
+    'https://vast-consideration-sur-kentucky.trycloudflare.com',
+    'https://discussing-soviet-dod-om.trycloudflare.com',
     'https://*.telegram.org',
     'https://web.telegram.org'
   ],

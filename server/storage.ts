@@ -98,6 +98,37 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
+  // Новый метод: getOrCreateUserByTelegramId
+  async getOrCreateUserByTelegramId(
+    telegramId: number,
+    username: string,
+    defaults: Partial<InsertUser> = {}
+  ): Promise<User> {
+    // 1) Пытаемся получить существующего
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.telegram_id, telegramId));
+    if (existing) {
+      return existing;
+    }
+
+    // 2) Если нет — создаём нового
+    const insertData: InsertUser = {
+      id: defaults.id!,
+      telegram_id: telegramId,
+      username,
+      balance_stars: typeof defaults.balance_stars === 'string' ? defaults.balance_stars : String(defaults.balance_stars ?? '100'),
+      has_ton_wallet: defaults.has_ton_wallet ?? false,
+      photo_url: defaults.photo_url ?? null,
+      created_at: defaults.created_at ?? new Date(),
+      referral_code: defaults.referral_code!,
+    };
+
+    const [created] = await db.insert(users).values(insertData).returning();
+    return created;
+  }
+
   // Wallet operations
   async getWallet(userId: string): Promise<Wallet | undefined> {
     const [wallet] = await db.select().from(wallets).where(eq(wallets.user_id, userId));
@@ -122,11 +153,10 @@ export class DatabaseStorage implements IStorage {
 
   async getActiveRooms(type?: string, limit = 10): Promise<Room[]> {
     let query = db.select().from(rooms).where(eq(rooms.status, 'waiting'));
-    
     if (type) {
-      query = query.where(eq(rooms.type, type));
+      // Если type задан, добавляем фильтр через and()
+      query = db.select().from(rooms).where(and(eq(rooms.status, 'waiting'), eq(rooms.type, type)));
     }
-    
     return await query.limit(limit).orderBy(rooms.created_at);
   }
 
@@ -182,7 +212,7 @@ export class DatabaseStorage implements IStorage {
           eq(participants.user_id, userId)
         )
       );
-    return result.rowCount > 0;
+    return !!result.rowCount;
   }
 
   // Game operations
@@ -316,18 +346,16 @@ export class DatabaseStorage implements IStorage {
   async getLeaderboard(period: 'today' | 'week' | 'alltime' = 'today', limit = 10): Promise<any[]> {
     let startDate;
     const now = new Date();
-    
     if (period === 'today') {
       startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     } else if (period === 'week') {
       const dayOfWeek = now.getDay();
-      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust when day is Sunday
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
       startDate = new Date(now.getFullYear(), now.getMonth(), diff);
       startDate.setHours(0, 0, 0, 0);
     }
-    
-    // Base query for all periods
-    let query = db
+    // Формируем запрос сразу через цепочку вызовов
+    let baseQuery = db
       .select({
         user_id: users.id,
         username: users.username,
@@ -339,16 +367,11 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(games, eq(taps.game_id, games.id))
       .innerJoin(users, eq(taps.user_id, users.id))
       .groupBy(users.id, users.username, users.photo_url);
-    
-    // Add date filter for specific periods
     if (startDate) {
-      query = query.where(gte(games.created_at, startDate));
+      baseQuery = baseQuery.where(gte(games.created_at, startDate));
     }
-    
-    // Add only finished games filter
-    query = query.where(sql`${games.end_time} IS NOT NULL`);
-    
-    return await query
+    baseQuery = baseQuery.where(sql`${games.end_time} IS NOT NULL`);
+    return await baseQuery
       .orderBy(desc(sql<number>`sum(${games.prize_pool})`), desc(sql<number>`sum(${taps.count})`))
       .limit(limit);
   }
