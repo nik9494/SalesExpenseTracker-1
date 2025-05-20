@@ -84,26 +84,43 @@ export const getTelegramWebApp = (): TelegramWebApp | null => {
 };
 
 /**
- * Validate if the user is opening the app from Telegram
- * 
- * В режиме разработки будем возвращать true для удобства работы
- */
-export const isTelegramWebAppValid = (): boolean => {
-  // В режиме разработки считаем, что все валидно
-  if (import.meta.env.DEV) {
-    return true;
-  }
-  
-  const webApp = getTelegramWebApp();
-  return Boolean(webApp && webApp.initData && webApp.initData.length > 0);
-};
-
-/**
  * Get the Telegram user information
  */
 export const getTelegramUser = () => {
   const webApp = getTelegramWebApp();
+  
+  // В режиме разработки возвращаем тестовые данные
+  if (import.meta.env.DEV && !webApp?.initDataUnsafe?.user) {
+    console.log('Development mode: returning test user data');
+    return {
+      id: 12345,
+      first_name: "Test",
+      last_name: "User",
+      username: "test_user",
+      language_code: "ru",
+      photo_url: "https://t.me/i/userpic/320/MxJFjM7nCgAyNi1NY-PJzEXuN2JGeaI-m6OGLZJvFIk.jpg"
+    };
+  }
+  
   return webApp?.initDataUnsafe?.user;
+};
+
+/**
+ * Validate if the user is opening the app from Telegram
+ */
+export const isTelegramWebAppValid = (): boolean => {
+  const webApp = getTelegramWebApp();
+  
+  // В режиме разработки всегда возвращаем true
+  if (import.meta.env.DEV) {
+    console.log('Development mode: WebApp validation - always valid');
+    return true;
+  }
+  
+  // В продакшене проверяем и WebApp, и данные пользователя
+  const hasWebApp = Boolean(webApp && webApp.initData && webApp.initData.length > 0);
+  const hasUser = Boolean(webApp?.initDataUnsafe?.user);
+  return hasWebApp && hasUser;
 };
 
 /**

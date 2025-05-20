@@ -16,7 +16,10 @@ export const useTelegram = () => {
   const { toast } = useToast();
 
   const initTelegram = useCallback(async () => {
+    console.log('Initializing Telegram WebApp...');
+    
     const webApp = getTelegramWebApp();
+    console.log('Telegram WebApp instance:', webApp);
     
     if (!webApp) {
       console.warn('Telegram WebApp not available');
@@ -26,14 +29,20 @@ export const useTelegram = () => {
     
     try {
       // Mark app as ready
+      console.log('Calling webApp.ready()...');
       webApp.ready();
+      console.log('WebApp ready called successfully');
       
       // Get user data
       const user = getTelegramUser();
+      console.log('Telegram user data:', user);
       setTelegramUser(user);
       
       // Check if user is valid
-      if (!isTelegramWebAppValid()) {
+      const isValid = isTelegramWebAppValid();
+      console.log('Is Telegram WebApp valid:', isValid);
+      
+      if (!isValid) {
         console.warn('Telegram WebApp validation failed');
         setIsInitialized(false);
         return;
@@ -42,14 +51,19 @@ export const useTelegram = () => {
       // Login user to backend
       if (user) {
         try {
+          console.log('Attempting to authenticate with backend...');
+          
           const response = await apiRequest('POST', '/api/v1/auth/telegram', {
-            telegramData: webApp.initData
+            telegramData: webApp.initData || 'development_mode'
           });
+          
+          console.log('Backend authentication response:', response);
           
           if (!response.ok) {
             throw new Error('Authentication failed');
           }
           
+          console.log('Authentication successful, setting isInitialized to true');
           setIsInitialized(true);
         } catch (error) {
           console.error('Error authenticating user:', error);
@@ -59,6 +73,8 @@ export const useTelegram = () => {
             variant: 'destructive',
           });
         }
+      } else {
+        console.warn('No user data available for authentication');
       }
     } catch (error) {
       console.error('Error initializing Telegram WebApp:', error);

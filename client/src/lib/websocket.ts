@@ -49,9 +49,17 @@ class WebSocketService {
       
       // Определение URL для WebSocket
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+const host = window.location.hostname;
+const port = '3001'; // Используем порт бэкенда
+const wsUrl = `${protocol}//${host}:${port}/ws`;
       
-      this.socket = new WebSocket(wsUrl);
+      // Добавляем токен как query параметр
+      const token = new URLSearchParams(window.location.search).get('token');
+      const finalWsUrl = token ? `${wsUrl}?token=${token}` : wsUrl;
+      
+      console.log('Connecting to WebSocket:', finalWsUrl); // Добавляем лог для отладки
+      
+      this.socket = new WebSocket(finalWsUrl);
       
       this.socket.onopen = () => {
         console.log('WebSocket соединение установлено');
