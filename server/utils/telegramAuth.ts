@@ -28,7 +28,7 @@ export function validateTelegramWebAppData(initData: string): boolean {
     const dataCheckString = Array.from(urlParams.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => `${key}=${value}`)
-      .join('\\n');
+      .join('\n');
     
     // Создаем HMAC-SHA256 с секретным ключом
     const secretKey = crypto

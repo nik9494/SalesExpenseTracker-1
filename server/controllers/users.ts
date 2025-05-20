@@ -29,18 +29,26 @@ const applyReferralSchema = z.object({
   code: z.string().min(4).max(10)
 });
 
-// Генерация и сохранение уникального кода
+// Генерация и сохранение уникального кода с защитой от гонок
 async function createUniqueReferral(userId: string): Promise<string> {
   let code: string;
-  do {
+  while (true) {
     code = generateReferralCode();
-  } while (await storage.getReferral(code));
-  await storage.createReferral({
-    code,
-    user_id: userId,
-    bonus_amount: '10',
-    created_at: new Date(),
-  });
+    try {
+      await storage.createReferral({
+        code,
+        user_id: userId,
+        bonus_amount: '10',
+        created_at: new Date(),
+      });
+      break;
+    } catch (err: any) {
+      // Если ошибка уникальности (23505), пробуем снова
+      if (err.code !== '23505') throw err;
+    }
+  }
+  // После успешного создания referral обновляем пользователя
+  await storage.updateUser(userId, { referral_code: code });
   return code;
 }
 
@@ -48,13 +56,12 @@ export function registerUserRoutes(app: Express, prefix: string) {
   // Telegram authentication
   app.post(`${prefix}/auth/telegram`, async (req: Request, res: Response) => {
     try {
-      const { telegramData } = req.body;
+      const { telegramData, referralCode } = req.body;
       const userData = validateTelegramAuth(telegramData);
       if (!userData) {
         return res.status(401).json({ message: "Invalid Telegram authentication" });
       }
       const { id: telegram_id, username, first_name, photo_url } = userData;
-      // Создаём или получаем пользователя
       const user = await storage.getOrCreateUserByTelegramId(
         telegram_id,
         username || `${first_name || "User"}${telegram_id.toString().slice(-4)}`,
@@ -64,26 +71,38 @@ export function registerUserRoutes(app: Express, prefix: string) {
           has_ton_wallet: false,
           photo_url,
           created_at: new Date(),
-          referral_code: '', // не передаём код, он будет создан отдельно
+          referral_code: generateReferralCode(), // ГЕНЕРИРУЕМ referral_code сразу
         }
       );
-      // Логика: если пользователь только что создан (created_at ≈ сейчас)
-      const isNew = Math.abs(new Date().getTime() - new Date(user.created_at).getTime()) < 5000;
-      if (isNew) {
-        const uniqueCode = await createUniqueReferral(user.id);
-        return res.json({
-          success: true,
-          user: {
-            id: user.id,
-            username: user.username,
-            balance_stars: user.balance_stars,
-            has_ton_wallet: user.has_ton_wallet,
-            photo_url: user.photo_url,
-            referral_code: uniqueCode,
+      // Новый пользователь, если нет referral_code
+      let isNew = !user.referral_code;
+      // Если новый и пришёл referralCode — применяем его
+      if (isNew && referralCode) {
+        const ref = await storage.getReferral(referralCode);
+        if (ref && ref.user_id !== user.id) {
+          await storage.createReferralUse({
+            id: uuidv4(),
+            code: referralCode,
+            referred_user: user.id,
+            used_at: new Date(),
+          });
+          const refUser = await storage.getUser(ref.user_id);
+          if (refUser) {
+            await storage.updateUser(ref.user_id, {
+              balance_stars: String(Number(ref.bonus_amount) + Number(refUser.balance_stars))
+            });
+            await storage.createTransaction({
+              id: uuidv4(),
+              user_id: ref.user_id,
+              amount: ref.bonus_amount,
+              type: 'referral',
+              description: `Referral bonus from ${user.username}`,
+              created_at: new Date(),
+            });
           }
-        });
+        }
       }
-      // Для старых пользователей просто отдаем существующие данные
+      // Возвращаем финальный ответ
       res.json({
         success: true,
         user: {
