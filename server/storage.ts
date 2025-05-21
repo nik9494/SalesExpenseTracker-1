@@ -114,6 +114,8 @@ export class DatabaseStorage implements IStorage {
     }
 
     // 2) Если нет — создаём нового
+    // Гарантируем, что referral_code всегда есть
+    const referral_code = defaults.referral_code || Math.random().toString(36).substring(2, 10).toUpperCase();
     const insertData: InsertUser = {
       id: defaults.id!,
       telegram_id: telegramId,
@@ -122,7 +124,7 @@ export class DatabaseStorage implements IStorage {
       has_ton_wallet: defaults.has_ton_wallet ?? false,
       photo_url: defaults.photo_url ?? null,
       created_at: defaults.created_at ?? new Date(),
-      referral_code: defaults.referral_code!,
+      referral_code,
     };
 
     const [created] = await db.insert(users).values(insertData).returning();

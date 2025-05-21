@@ -62,7 +62,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
         return res.status(401).json({ message: "Invalid Telegram authentication" });
       }
       const { id: telegram_id, username, first_name, photo_url } = userData;
-      const user = await storage.getOrCreateUserByTelegramId(
+      let user = await storage.getOrCreateUserByTelegramId(
         telegram_id,
         username || `${first_name || "User"}${telegram_id.toString().slice(-4)}`,
         {
@@ -71,7 +71,6 @@ export function registerUserRoutes(app: Express, prefix: string) {
           has_ton_wallet: false,
           photo_url,
           created_at: new Date(),
-          referral_code: generateReferralCode(), // ГЕНЕРИРУЕМ referral_code сразу
         }
       );
       // Новый пользователь, если нет referral_code
@@ -102,9 +101,13 @@ export function registerUserRoutes(app: Express, prefix: string) {
           }
         }
       }
-      // Возвращаем финальный ответ с JWT-токеном
+      // --- Логика создания referral_code ---
+      let referral_code = user.referral_code;
+      if (!referral_code) {
+        referral_code = await createUniqueReferral(user.id);
+        // Обновляем только referral_code, не весь user
+      }
       // --- JWT генерация ---
-    
       const token = jwt.sign(
         { user_id: user.id, telegram_id: user.telegram_id },
         process.env.JWT_SECRET || 'ytreewddsfgg34532hyjklldseeew3322aw',
@@ -118,7 +121,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
           balance_stars: user.balance_stars,
           has_ton_wallet: user.has_ton_wallet,
           photo_url: user.photo_url,
-          referral_code: user.referral_code,
+          referral_code,
         },
         token
       });

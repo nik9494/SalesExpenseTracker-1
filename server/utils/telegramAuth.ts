@@ -9,39 +9,24 @@ import { v4 as uuidv4 } from 'uuid';
  * @returns true если данные валидны, false если нет
  */
 export function validateTelegramWebAppData(initData: string): boolean {
-  // В режиме разработки можно пропустить проверку
-  if (process.env.NODE_ENV === 'development' && !process.env.TELEGRAM_BOT_TOKEN) {
-    console.warn('Пропускаем валидацию Telegram в режиме разработки');
-    return true;
-  }
-
+  // Валидация всегда обязательна, даже в development
   try {
     const urlParams = new URLSearchParams(initData);
     const hash = urlParams.get('hash');
-    
     if (!hash) return false;
-    
-    // Удаляем hash из данных
     urlParams.delete('hash');
-    
-    // Сортируем оставшиеся параметры по ключу 
     const dataCheckString = Array.from(urlParams.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => `${key}=${value}`)
       .join('\n');
-    
-    // Создаем HMAC-SHA256 с секретным ключом
     const secretKey = crypto
       .createHmac('sha256', 'WebAppData')
       .update(process.env.TELEGRAM_BOT_TOKEN || 'test_token')
       .digest();
-    
-    // Вычисляем хеш данных
     const calculatedHash = crypto
       .createHmac('sha256', secretKey)
       .update(dataCheckString)
       .digest('hex');
-    
     return calculatedHash === hash;
   } catch (error) {
     console.error('Ошибка при валидации данных Telegram:', error);
@@ -56,25 +41,11 @@ export function validateTelegramWebAppData(initData: string): boolean {
  */
 export function validateTelegramAuth(telegramData: string): any {
   try {
-    // В режиме разработки возвращаем тестовые данные
-    if (process.env.NODE_ENV === 'development' && !process.env.TELEGRAM_BOT_TOKEN) {
-      console.warn('Возвращаем тестовые данные Telegram в режиме разработки');
-      return {
-        id: 12345,
-        username: 'test_user',
-        first_name: 'Test',
-        last_name: 'User',
-        photo_url: 'https://t.me/i/userpic/320/MxJFjM7nCgAyNi1NY-PJzEXuN2JGeaI-m6OGLZJvFIk.jpg'
-      };
-    }
-    
-    // Проверяем валидность данных
+    // Всегда только реальный пользователь
     const isValid = validateTelegramWebAppData(telegramData);
-    if (!isValid && process.env.NODE_ENV === 'production') {
+    if (!isValid) {
       return undefined;
     }
-    
-    // Извлекаем данные пользователя
     return extractTelegramUserData(telegramData);
   } catch (error) {
     console.error('Ошибка при валидации Telegram Auth:', error);
@@ -156,64 +127,8 @@ export async function authenticateTelegram(req: Request, res: Response, next: Ne
  * Middleware для проверки аутентификации
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // В режиме разработки можно использовать заглушку для тестирования
-  if (process.env.NODE_ENV === 'development' && !req.user) {
-    return getDummyUser().then(user => {
-      req.user = user;
-      next();
-    }).catch(error => {
-      console.error('Ошибка при получении тестового пользователя:', error);
-      res.status(401).json({ error: 'Пользователь не аутентифицирован' });
-    });
-  }
-  
   if (!req.user) {
     return res.status(401).json({ error: 'Пользователь не аутентифицирован' });
   }
-  
   next();
-}
-
-/**
- * Генерирует реферальный код из 8 символов
- */
-function generateReferralCode(): string {
-  return Math.random().toString(36).substring(2, 10).toUpperCase();
-}
-
-/**
- * Получает или создает тестового пользователя для режима разработки
- */
-async function getDummyUser() {
-  try {
-    // Ищем тестового пользователя или создаем нового
-    let user = await storage.getUserByTelegramId(12345);
-    
-    if (!user) {
-      const referralCode = generateReferralCode();
-      
-      user = await storage.createUser({
-        id: uuidv4(),
-        telegram_id: 12345,
-        username: 'test_user',
-        balance_stars: "1000", // Даем тестовому пользователю много звезд для тестирования
-        has_ton_wallet: false,
-        photo_url: 'https://t.me/i/userpic/320/MxJFjM7nCgAyNi1NY-PJzEXuN2JGeaI-m6OGLZJvFIk.jpg',
-        created_at: new Date(),
-        referral_code: referralCode
-      });
-      
-      await storage.createReferral({
-        code: referralCode,
-        user_id: user.id,
-        bonus_amount: "50",
-        created_at: new Date()
-      });
-    }
-    
-    return user;
-  } catch (error) {
-    console.error('Ошибка при создании тестового пользователя:', error);
-    throw error;
-  }
 }
