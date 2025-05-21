@@ -33,16 +33,13 @@ export function RoomCard({ room, userBalance }: RoomCardProps) {
     }
   };
 
-  // Calculate progress based on participants count
-  const progress = (room.participants_count / room.max_players) * 100;
-
   return (
     <div 
       className="bg-white rounded-xl shadow-md p-3 border border-telegram-gray-200 relative cursor-pointer"
       onClick={handleRoomSelect}
     >
       <div className="absolute top-2 right-2 bg-telegram-gray-200 text-xs px-2 py-1 rounded-full text-telegram-gray-700">
-        <i className="fas fa-users mr-1"></i> {room.participants_count}/{room.max_players}
+        <i className="fas fa-users mr-1"></i> {Number(room.participants_count ?? 0) + 12} игроков
       </div>
       <div className="text-center mb-2">
         <div className="bg-[#0088CC] text-white inline-block px-3 py-1 rounded-full text-xs font-medium">
@@ -58,7 +55,7 @@ export function RoomCard({ room, userBalance }: RoomCardProps) {
       <div className="mt-3 bg-telegram-gray-100 rounded-full h-1.5">
         <div 
           className="bg-[#0088CC] h-1.5 rounded-full transition-all duration-300"
-          style={{ width: `${progress}%` }}
+          style={{ width: `${Math.min(100, ((room.participants_count ?? 0) / 10) * 100)}%` }}
         ></div>
       </div>
     </div>

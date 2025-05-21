@@ -36,13 +36,9 @@ export default function HomePage() {
   // Получаем агрегацию по количеству игроков в комнатах с каждой ценой
   const { data: countsData, refetch: refetchCounts, isLoading: countsLoading } = useQuery({
     queryKey: ['/api/v1/rooms/standard-counts'],
-    enabled: !!telegramUser && !!localStorage.getItem('token'),
+    enabled: true,
     queryFn: async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return { counts: {} };
-      const response = await fetch('/api/v1/rooms/standard-counts', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await fetch('/api/v1/rooms/standard-counts');
       return response.json();
     },
   });

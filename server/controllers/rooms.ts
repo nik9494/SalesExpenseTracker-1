@@ -408,7 +408,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
   });
   
   // Получить количество игроков по entry_fee для стандартных комнат
-  app.get(`${prefix}/rooms/standard-counts`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/rooms/standard-counts`, async (req: Request, res: Response) => {
     try {
       const rooms = await storage.getActiveRooms("standard", 100);
       // Агрегируем по entry_fee
