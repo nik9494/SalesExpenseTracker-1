@@ -2,7 +2,7 @@ import { Express, Request, Response } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { validateTelegramAuth, requireAuth } from "../utils/telegramAuth";
+import { validateTelegramAuth, jwtAuth } from "../utils/telegramAuth";
 import { generateReferralCode } from "../utils/helpers";
 import jwt from 'jsonwebtoken';
 // User creation schema
@@ -132,7 +132,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
   });
   
   // Get current user
-  app.get(`${prefix}/users/me`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/users/me`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const user = await storage.getUser(userId);
@@ -190,7 +190,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
   });
   
   // Connect TON wallet
-  app.post(`${prefix}/wallet/connect`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/wallet/connect`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validation = walletSchema.safeParse(req.body);
@@ -226,7 +226,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
   });
   
   // Get wallet status
-  app.get(`${prefix}/wallet/status`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/wallet/status`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const wallet = await storage.getWallet(userId);
@@ -245,7 +245,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
   });
   
   // Get wallet info
-  app.get(`${prefix}/wallet/info`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/wallet/info`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const wallet = await storage.getWallet(userId);
@@ -267,7 +267,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
   });
   
   // Disconnect wallet
-  app.post(`${prefix}/wallet/disconnect`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/wallet/disconnect`, jwtAuth, async (req: Request, res: Response) => {
     try {
       // This is a stub - in a real app, you'd need to handle wallet disconnection
       // For now, we'll just return success
@@ -279,7 +279,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
   });
   
   // Add stars (simulated payment)
-  app.post(`${prefix}/users/addStars`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/users/addStars`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validation = addStarsSchema.safeParse(req.body);
@@ -319,7 +319,7 @@ export function registerUserRoutes(app: Express, prefix: string) {
   });
   
   // Apply referral code
-  app.post(`${prefix}/users/applyReferral`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/users/applyReferral`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validation = applyReferralSchema.safeParse(req.body);
@@ -374,5 +374,10 @@ export function registerUserRoutes(app: Express, prefix: string) {
       console.error("Error applying referral code:", error);
       res.status(500).json({ message: "Failed to apply referral code" });
     }
+  });
+  
+  // Fetch rooms (пример защищённого эндпоинта)
+  app.get(`${prefix}/rooms`, jwtAuth, async (req: Request, res: Response) => {
+    // ...existing code...
   });
 }

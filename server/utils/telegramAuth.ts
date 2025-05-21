@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import * as crypto from 'crypto';
 import { storage } from '../storage';
 import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
 
 /**
  * Проверяет данные аутентификации от Telegram WebApp
@@ -131,4 +132,20 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: 'Пользователь не аутентифицирован' });
   }
   next();
+}
+
+// JWT middleware для всех защищённых маршрутов
+export function jwtAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Пользователь не аутентифицирован (нет токена)' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'ytreewddsfgg34532hyjklldseeew3322aw') as any;
+    req.user = { id: payload.user_id, telegram_id: payload.telegram_id };
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Пользователь не аутентифицирован (неверный токен)' });
+  }
 }

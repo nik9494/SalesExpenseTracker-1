@@ -20,47 +20,54 @@ export const useTelegram = () => {
   const { toast } = useToast();
 
   const initTelegram = useCallback(async () => {
-    if (isInitInProgress.current) return; // Не запускать параллельно
+    if (isInitInProgress.current) {
+      console.log('Initialization already in progress...');
+      return;
+    }
+
     isInitInProgress.current = true;
     console.log('Initializing Telegram WebApp...');
-    
+
+    // Add delay to ensure Telegram WebApp is loaded
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     const webApp = getTelegramWebApp();
     console.log('Telegram WebApp instance:', webApp);
-    
+
     if (!webApp) {
       console.warn('Telegram WebApp not available');
       setIsInitialized(false);
       isInitInProgress.current = false;
       return;
     }
-    
+
     try {
       // Mark app as ready
       console.log('Calling webApp.ready()...');
       webApp.ready();
       console.log('WebApp ready called successfully');
-      
+
       // Get user data
       const user = getTelegramUser();
       console.log('Telegram user data:', user);
       setTelegramUser(user);
-      
+
       // Check if user is valid
       const isValid = isTelegramWebAppValid();
       console.log('Is Telegram WebApp valid:', isValid);
-      
+
       if (!isValid) {
         console.warn('Telegram WebApp validation failed');
         setIsInitialized(false);
         isInitInProgress.current = false;
         return;
       }
-      
+
       // Login user to backend
       if (user) {
         try {
           console.log('Attempting to authenticate with backend...');
-          
+
           if (!webApp.initData) {
             throw new Error('Приложение должно быть открыто из Telegram. Данные Telegram не получены.');
           }
@@ -72,15 +79,15 @@ export const useTelegram = () => {
             localStorage.setItem('token', data.token);
             await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
           }
-          
+
           console.log('Backend authentication response:', response);
-          
+
           if (!response.ok) {
             throw new Error('Authentication failed');
           }
-          
+
           console.log('Authentication successful, setting isInitialized to true');
-          
+
           // После успешной авторизации сбрасываем кэш пользователя
           await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
 
@@ -128,14 +135,14 @@ export const useTelegram = () => {
   const setMainButton = useCallback((text: string, callback: () => void) => {
     const webApp = getTelegramWebApp();
     if (!webApp) return;
-    
+
     webApp.MainButton.text = text;
     webApp.MainButton.color = webApp.themeParams?.button_color || '#0088CC';
     webApp.MainButton.textColor = webApp.themeParams?.button_text_color || '#FFFFFF';
-    
+
     webApp.MainButton.onClick(callback);
     webApp.MainButton.show();
-    
+
     return () => {
       webApp.MainButton.offClick(callback);
       webApp.MainButton.hide();
@@ -146,7 +153,7 @@ export const useTelegram = () => {
   const triggerHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => {
     const webApp = getTelegramWebApp();
     if (!webApp) return;
-    
+
     webApp.HapticFeedback.impactOccurred(style);
   }, []);
 
@@ -154,7 +161,7 @@ export const useTelegram = () => {
   const closeApp = useCallback(() => {
     const webApp = getTelegramWebApp();
     if (!webApp) return;
-    
+
     webApp.close();
   }, []);
 

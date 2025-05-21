@@ -20,49 +20,49 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<Omit<User, "id">>): Promise<User | undefined>;
-  
+
   // Wallet operations
   getWallet(userId: string): Promise<Wallet | undefined>;
   createWallet(wallet: InsertWallet): Promise<Wallet>;
-  
+
   // Room operations
   getRoom(id: string): Promise<Room | undefined>;
   getRoomByCode(code: string): Promise<Room | undefined>;
   getActiveRooms(type?: string, limit?: number): Promise<Room[]>;
   createRoom(room: InsertRoom): Promise<Room>;
   updateRoom(id: string, data: Partial<Omit<Room, "id">>): Promise<Room | undefined>;
-  
+
   // Participant operations
   getParticipant(roomId: string, userId: string): Promise<Participant | undefined>;
   getRoomParticipants(roomId: string): Promise<Participant[]>;
   addParticipant(participant: InsertParticipant): Promise<Participant>;
   removeParticipant(roomId: string, userId: string): Promise<boolean>;
-  
+
   // Game operations
   getGame(id: string): Promise<Game | undefined>;
   createGame(game: InsertGame): Promise<Game>;
   updateGame(id: string, data: Partial<Omit<Game, "id">>): Promise<Game | undefined>;
   getGamesByRoomId(roomId: string, limit?: number): Promise<Game[]>;
-  
+
   // Tap operations
   addTaps(tap: InsertTap): Promise<Tap>;
   getGameTaps(gameId: string): Promise<Tap[]>;
   getUserTapCount(gameId: string, userId: string): Promise<number>;
-  
+
   // Transaction operations
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getUserTransactions(userId: string): Promise<Transaction[]>;
-  
+
   // Referral operations
   getReferral(code: string): Promise<Referral | undefined>;
   createReferral(referral: InsertReferral): Promise<Referral>;
   createReferralUse(referralUse: InsertReferralUse): Promise<ReferralUse>;
-  
+
   // Bonus progress operations
   getBonusProgress(userId: string): Promise<BonusProgress | undefined>;
   createBonusProgress(bonus: InsertBonusProgress): Promise<BonusProgress>;
   updateBonusProgress(userId: string, data: Partial<Omit<BonusProgress, "id" | "user_id">>): Promise<BonusProgress | undefined>;
-  
+
   // Leaderboard operations
   getLeaderboard(period: 'today' | 'week' | 'alltime', limit?: number): Promise<any[]>;
 }
@@ -269,7 +269,7 @@ export class DatabaseStorage implements IStorage {
           eq(taps.user_id, userId)
         )
       );
-    
+
     return result[0]?.count || 0;
   }
 

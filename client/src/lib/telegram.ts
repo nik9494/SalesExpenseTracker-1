@@ -98,16 +98,29 @@ export const getTelegramUser = () => {
 export const isTelegramWebAppValid = (): boolean => {
   const webApp = getTelegramWebApp();
   
-  // В режиме разработки всегда возвращаем true
+  if (!webApp) {
+    console.warn('Telegram WebApp not found');
+    return false;
+  }
+
+  // Check if we have initData and user data
+  const hasInitData = Boolean(webApp.initData && webApp.initData.length > 0);
+  const hasUser = Boolean(webApp.initDataUnsafe?.user);
+
+  if (!hasInitData) {
+    console.warn('Missing Telegram initData');
+  }
+  if (!hasUser) {
+    console.warn('Missing Telegram user data');
+  }
+
+  // In development, log but allow
   if (import.meta.env.DEV) {
-    console.log('Development mode: WebApp validation - always valid');
+    console.log('Development mode: Proceeding despite validation issues');
     return true;
   }
-  
-  // В продакшене проверяем и WebApp, и данные пользователя
-  const hasWebApp = Boolean(webApp && webApp.initData && webApp.initData.length > 0);
-  const hasUser = Boolean(webApp?.initDataUnsafe?.user);
-  return hasWebApp && hasUser;
+
+  return hasInitData && hasUser;
 };
 
 /**
