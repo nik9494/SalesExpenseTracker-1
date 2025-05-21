@@ -17,6 +17,7 @@ export const useTelegram = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const isPopupOpenRef = useRef(false);
   const isInitInProgress = useRef(false); // Новый флаг
+  const hasShownWelcomePopup = useRef(false); // Флаг для показа welcome popup
   const { toast } = useToast();
 
   const initTelegram = useCallback(async () => {
@@ -91,8 +92,9 @@ export const useTelegram = () => {
           // После успешной авторизации сбрасываем кэш пользователя
           await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
 
-          // Show welcome message
-          if (!isPopupOpenRef.current) {
+          // Show welcome message только если не показывали в этой сессии
+          if (!hasShownWelcomePopup.current) {
+            hasShownWelcomePopup.current = true;
             setIsPopupOpen(true);
             isPopupOpenRef.current = true;
             webApp.showPopup({

@@ -356,8 +356,9 @@ export class DatabaseStorage implements IStorage {
       startDate = new Date(now.getFullYear(), now.getMonth(), diff);
       startDate.setHours(0, 0, 0, 0);
     }
-    // Формируем запрос сразу через цепочку вызовов
-    let baseQuery = db
+
+    // Создаем базовый запрос
+    const query = db
       .select({
         user_id: users.id,
         username: users.username,
@@ -369,11 +370,15 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(games, eq(taps.game_id, games.id))
       .innerJoin(users, eq(taps.user_id, users.id))
       .groupBy(users.id, users.username, users.photo_url);
+
+    // Добавляем условия если нужно
     if (startDate) {
-      baseQuery = baseQuery.where(gte(games.created_at, startDate));
+      query.where(gte(games.created_at, startDate));
     }
-    baseQuery = baseQuery.where(sql`${games.end_time} IS NOT NULL`);
-    return await baseQuery
+    query.where(sql`${games.end_time} IS NOT NULL`);
+
+    // Возвращаем результаты с сортировкой и лимитом
+    return await query
       .orderBy(desc(sql<number>`sum(${games.prize_pool})`), desc(sql<number>`sum(${taps.count})`))
       .limit(limit);
   }

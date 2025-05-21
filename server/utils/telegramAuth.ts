@@ -135,7 +135,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 // JWT middleware для всех защищённых маршрутов
-export function jwtAuth(req: Request, res: Response, next: NextFunction) {
+export async function jwtAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Пользователь не аутентифицирован (нет токена)' });
@@ -143,7 +143,12 @@ export function jwtAuth(req: Request, res: Response, next: NextFunction) {
   const token = authHeader.split(' ')[1];
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'ytreewddsfgg34532hyjklldseeew3322aw') as any;
-    req.user = { id: payload.user_id, telegram_id: payload.telegram_id };
+    // Получаем полные данные пользователя из базы данных
+    const user = await storage.getUserById(payload.user_id);
+    if (!user) {
+      return res.status(401).json({ error: 'Пользователь не найден' });
+    }
+    req.user = user;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Пользователь не аутентифицирован (неверный токен)' });
