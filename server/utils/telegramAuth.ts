@@ -144,7 +144,7 @@ export async function jwtAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'ytreewddsfgg34532hyjklldseeew3322aw') as any;
     // Получаем полные данные пользователя из базы данных
-    const user = await storage.getUserById(payload.user_id);
+    const user = await storage.getUser(payload.user_id);
     if (!user) {
       return res.status(401).json({ error: 'Пользователь не найден' });
     }
