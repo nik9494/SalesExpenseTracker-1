@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { 
   getTelegramWebApp, 
   getTelegramUser, 
@@ -9,13 +9,19 @@ import {
 } from '@/lib/telegram';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 
 export const useTelegram = () => {
   const [telegramUser, setTelegramUser] = useState<any>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const isPopupOpenRef = useRef(false);
+  const isInitInProgress = useRef(false); // Новый флаг
   const { toast } = useToast();
 
   const initTelegram = useCallback(async () => {
+    if (isInitInProgress.current) return; // Не запускать параллельно
+    isInitInProgress.current = true;
     console.log('Initializing Telegram WebApp...');
     
     const webApp = getTelegramWebApp();
@@ -24,6 +30,7 @@ export const useTelegram = () => {
     if (!webApp) {
       console.warn('Telegram WebApp not available');
       setIsInitialized(false);
+      isInitInProgress.current = false;
       return;
     }
     
@@ -45,6 +52,7 @@ export const useTelegram = () => {
       if (!isValid) {
         console.warn('Telegram WebApp validation failed');
         setIsInitialized(false);
+        isInitInProgress.current = false;
         return;
       }
       
@@ -53,9 +61,17 @@ export const useTelegram = () => {
         try {
           console.log('Attempting to authenticate with backend...');
           
+          if (!webApp.initData) {
+            throw new Error('Приложение должно быть открыто из Telegram. Данные Telegram не получены.');
+          }
           const response = await apiRequest('POST', '/api/v1/auth/telegram', {
-            telegramData: webApp.initData || 'development_mode'
+            telegramData: webApp.initData
           });
+          const data = await response.json();
+          if (data.token) {
+            localStorage.setItem('token', data.token);
+            await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
+          }
           
           console.log('Backend authentication response:', response);
           
@@ -65,12 +81,22 @@ export const useTelegram = () => {
           
           console.log('Authentication successful, setting isInitialized to true');
           
+          // После успешной авторизации сбрасываем кэш пользователя
+          await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
+
           // Show welcome message
-          webApp.showPopup({
-            title: 'Добро пожаловать в TapGame!',
-            message: 'Нажимайте на кнопку быстрее всех и выигрывайте призы!',
-            buttons: [{ type: 'ok' }]
-          });
+          if (!isPopupOpenRef.current) {
+            setIsPopupOpen(true);
+            isPopupOpenRef.current = true;
+            webApp.showPopup({
+              title: 'Добро пожаловать в TapGame!',
+              message: 'Нажимайте на кнопку быстрее всех и выигрывайте призы!',
+              buttons: [{ type: 'ok' }]
+            }, () => {
+              setIsPopupOpen(false);
+              isPopupOpenRef.current = false;
+            });
+          }
 
           // Set up main button
           webApp.MainButton.text = 'Начать игру';
@@ -93,8 +119,10 @@ export const useTelegram = () => {
     } catch (error) {
       console.error('Error initializing Telegram WebApp:', error);
       setIsInitialized(false);
+    } finally {
+      isInitInProgress.current = false; // Сбросить флаг после завершения
     }
-  }, [toast]);
+  }, [toast, isPopupOpen]);
 
   // Set up main button
   const setMainButton = useCallback((text: string, callback: () => void) => {
@@ -134,12 +162,18 @@ export const useTelegram = () => {
   const showPopup = useCallback((title: string, message: string, buttons: any[] = [{ type: 'ok' }], callback?: (buttonId: string) => void) => {
     const webApp = getTelegramWebApp();
     if (!webApp) return;
-    
+    if (isPopupOpenRef.current) return;
+    setIsPopupOpen(true);
+    isPopupOpenRef.current = true;
     webApp.showPopup({
       title,
       message,
       buttons
-    }, callback);
+    }, (buttonId: string) => {
+      setIsPopupOpen(false);
+      isPopupOpenRef.current = false;
+      if (callback) callback(buttonId);
+    });
   }, []);
 
   useEffect(() => {

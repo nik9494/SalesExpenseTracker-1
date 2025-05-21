@@ -12,16 +12,27 @@ export default function WaitingRoomPage() {
   const [, navigate] = useLocation();
   const [emojis, setEmojis] = useState<{ id: string; emoji: string; x: number; y: number; }[]>([]);
   
-  const { data: userData } = useQuery({
+  // Fetch user data
+  const { data: userData, isLoading: userLoading } = useQuery({
     queryKey: ['/api/v1/users/me'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/v1/users/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      return response.json();
+    },
   });
   
   const { 
     room, 
+    game,
     players, 
-    isStarted, 
-    remainingTime, 
-    handleSendReaction 
+    taps, 
+    isStarted,
+    isFinished,
+    remainingTime,
+    handleTap
   } = useGame({ 
     roomId, 
     userId: userData?.user?.id 

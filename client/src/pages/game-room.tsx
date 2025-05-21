@@ -13,9 +13,18 @@ export default function GameRoomPage() {
   const [, navigate] = useLocation();
   const [countdown, setCountdown] = useState<number | null>(null);
   
-  const { data: userData } = useQuery({
+  // Fetch user data
+  const { data: userData, isLoading: userLoading } = useQuery({
     queryKey: ['/api/v1/users/me'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/v1/users/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      return response.json();
+    },
   });
+  const user: User | null = userData?.user || null;
   
   const { 
     room, 
@@ -28,7 +37,7 @@ export default function GameRoomPage() {
     handleTap
   } = useGame({ 
     roomId, 
-    userId: userData?.user?.id 
+    userId: user?.id 
   });
   
   // Start countdown when room is ready
@@ -133,7 +142,7 @@ export default function GameRoomPage() {
             
             {/* Аватары игроков по кругу */}
             {players.map((player, index) => {
-              const isCurrentUser = player.id === userData?.user?.id;
+              const isCurrentUser = player.id === user?.id;
               const playerTaps = isCurrentUser ? taps : (player.taps || 0);
               const totalPlayers = players.length;
               
@@ -208,7 +217,7 @@ export default function GameRoomPage() {
         {/* Отображение полных прогресс-баров игроков вверху экрана */}
         <div className="absolute top-6 left-0 right-0 px-4 space-y-3">
           {getSortedPlayers().map((player) => {
-            const isCurrentUser = player.id === userData?.user?.id;
+            const isCurrentUser = player.id === user?.id;
             const playerTaps = isCurrentUser ? taps : (player.taps || 0);
             
             return (

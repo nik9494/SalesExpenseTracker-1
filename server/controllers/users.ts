@@ -4,7 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { validateTelegramAuth, requireAuth } from "../utils/telegramAuth";
 import { generateReferralCode } from "../utils/helpers";
-
+import jwt from 'jsonwebtoken';
 // User creation schema
 const userSchema = z.object({
   telegram_id: z.number(),
@@ -102,7 +102,14 @@ export function registerUserRoutes(app: Express, prefix: string) {
           }
         }
       }
-      // Возвращаем финальный ответ
+      // Возвращаем финальный ответ с JWT-токеном
+      // --- JWT генерация ---
+    
+      const token = jwt.sign(
+        { user_id: user.id, telegram_id: user.telegram_id },
+        process.env.JWT_SECRET || 'ytreewddsfgg34532hyjklldseeew3322aw',
+        { expiresIn: '30d' }
+      );
       res.json({
         success: true,
         user: {
@@ -112,7 +119,8 @@ export function registerUserRoutes(app: Express, prefix: string) {
           has_ton_wallet: user.has_ton_wallet,
           photo_url: user.photo_url,
           referral_code: user.referral_code,
-        }
+        },
+        token
       });
     } catch (error) {
       console.error("Authentication error:", error);
@@ -139,6 +147,13 @@ export function registerUserRoutes(app: Express, prefix: string) {
       // Get referrals count and amount earned
       // This would be a more complex query in a real app
       const referrals = 0; // Placeholder
+      
+      // Добавляем заголовки для предотвращения кеширования
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
       
       res.json({
         user: {

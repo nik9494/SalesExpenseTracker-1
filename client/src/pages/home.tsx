@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { RoomCard } from "@/components/lobby/RoomCard";
 import { BonusRoomCard } from "@/components/lobby/BonusRoomCard";
-import { HeroRoomCard } from "@/components/lobby/HeroRoomCard";
 import { Room } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import { useTelegram } from "@/hooks/useTelegram";
@@ -19,19 +18,24 @@ interface User {
 export default function HomePage() {
   const { telegramUser } = useTelegram();
   
+  // Fetch user data
+  const { data: userData, isLoading: userLoading } = useQuery({
+    queryKey: ['/api/v1/users/me'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/v1/users/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      return response.json();
+    },
+  });
+  const user: User | null = userData?.user || null;
+
   // Fetch rooms
   const { data: roomsData, isLoading: roomsLoading } = useQuery({
     queryKey: ['/api/v1/rooms'],
     enabled: !!telegramUser,
   });
-  
-  // Fetch user data
-  const { data: userData, isLoading: userLoading } = useQuery({
-    queryKey: ['/api/v1/users/me'],
-    enabled: !!telegramUser,
-  });
-  
-  const user: User | null = userData?.user || null;
   const rooms: Room[] = roomsData?.rooms || [
     // Временные данные для отображения в случае, если нет комнат с сервера
     {

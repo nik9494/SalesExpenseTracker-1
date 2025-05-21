@@ -24,7 +24,8 @@ export default defineConfig(async ({ mode }) => {
       allowedHosts: [
         'localhost',
         '127.0.0.1',
-        env.VITE_CLOUDFLARE_DOMAIN || '*.trycloudflare.com'
+        '*.trycloudflare.com',
+        env.VITE_WEB_APP_URL?.replace(/^https?:\/\//, '') // убираем протокол
       ],
       proxy: {
         '/api': {

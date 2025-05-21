@@ -14,11 +14,17 @@ export default function LeaderboardPage() {
     queryKey: [`/api/v1/leaderboard/${period}`],
   });
 
-  // Fetch user data to compare with current user
+  // Fetch user data
   const { data: userData } = useQuery({
     queryKey: ['/api/v1/users/me'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/v1/users/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      return response.json();
+    },
   });
-
   const currentUserId = userData?.user?.id;
   const leaderboardData = data?.leaderboard || [];
 

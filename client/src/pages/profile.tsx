@@ -13,8 +13,14 @@ export default function ProfilePage() {
   // Fetch user data
   const { data, isLoading } = useQuery({
     queryKey: ['/api/v1/users/me'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/v1/users/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      return response.json();
+    },
   });
-  
   const user = data?.user;
   
   // Copy wallet address to clipboard

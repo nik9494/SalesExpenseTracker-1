@@ -88,20 +88,7 @@ export const getTelegramWebApp = (): TelegramWebApp | null => {
  */
 export const getTelegramUser = () => {
   const webApp = getTelegramWebApp();
-  
-  // В режиме разработки возвращаем тестовые данные
-  if (import.meta.env.DEV && !webApp?.initDataUnsafe?.user) {
-    console.log('Development mode: returning test user data');
-    return {
-      id: 12345,
-      first_name: "Test",
-      last_name: "User",
-      username: "test_user",
-      language_code: "ru",
-      photo_url: "https://t.me/i/userpic/320/MxJFjM7nCgAyNi1NY-PJzEXuN2JGeaI-m6OGLZJvFIk.jpg"
-    };
-  }
-  
+  // Возвращаем только реального пользователя
   return webApp?.initDataUnsafe?.user;
 };
 

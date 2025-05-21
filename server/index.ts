@@ -127,7 +127,7 @@ app.use((req, res, next) => {
     .catch(err => console.error('❌ Ошибка установки webhook:', err));
 
   // Дополнительные константы для логов
-  const cloudflareDomain = process.env.VITE_CLOUDFLARE_DOMAIN;
+  const cloudflareDomain = process.env.WEB_APP_URL;
   const backendUrl = process.env.VITE_BACKEND_URL;
   const backendWsUrl = process.env.VITE_BACKEND_WS_URL;
 
