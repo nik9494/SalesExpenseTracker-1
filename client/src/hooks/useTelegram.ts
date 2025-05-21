@@ -17,7 +17,6 @@ export const useTelegram = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const isPopupOpenRef = useRef(false);
   const isInitInProgress = useRef(false); // Новый флаг
-  const hasShownWelcomePopup = useRef(false); // Флаг для показа welcome popup
   const { toast } = useToast();
 
   const initTelegram = useCallback(async () => {
@@ -92,9 +91,9 @@ export const useTelegram = () => {
           // После успешной авторизации сбрасываем кэш пользователя
           await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
 
-          // Show welcome message только если не показывали в этой сессии
-          if (!hasShownWelcomePopup.current) {
-            hasShownWelcomePopup.current = true;
+          // Show welcome message только если не показывали в этой сессии (через sessionStorage)
+          if (!window.sessionStorage.getItem('tapgame_welcome_shown')) {
+            window.sessionStorage.setItem('tapgame_welcome_shown', '1');
             setIsPopupOpen(true);
             isPopupOpenRef.current = true;
             webApp.showPopup({
@@ -107,12 +106,6 @@ export const useTelegram = () => {
             });
           }
 
-          // Set up main button
-          webApp.MainButton.text = 'Начать игру';
-          webApp.MainButton.show();
-          webApp.MainButton.onClick(() => {
-            window.location.href = '/';
-          });
           setIsInitialized(true);
         } catch (error) {
           console.error('Error authenticating user:', error);
@@ -132,24 +125,6 @@ export const useTelegram = () => {
       isInitInProgress.current = false; // Сбросить флаг после завершения
     }
   }, [toast, isPopupOpen]);
-
-  // Set up main button
-  const setMainButton = useCallback((text: string, callback: () => void) => {
-    const webApp = getTelegramWebApp();
-    if (!webApp) return;
-
-    webApp.MainButton.text = text;
-    webApp.MainButton.color = webApp.themeParams?.button_color || '#0088CC';
-    webApp.MainButton.textColor = webApp.themeParams?.button_text_color || '#FFFFFF';
-
-    webApp.MainButton.onClick(callback);
-    webApp.MainButton.show();
-
-    return () => {
-      webApp.MainButton.offClick(callback);
-      webApp.MainButton.hide();
-    };
-  }, []);
 
   // Haptic feedback
   const triggerHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => {
@@ -195,7 +170,6 @@ export const useTelegram = () => {
     telegramUser,
     isInitialized,
     initTelegram,
-    setMainButton,
     triggerHapticFeedback,
     closeApp,
     showPopup,

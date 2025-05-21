@@ -4,6 +4,7 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { generateRoomCode } from "../utils/helpers";
 import { requireAuth } from "../utils/telegramAuth";
+import { roomManager } from "../utils/roomManager";
 
 // Room creation schema
 const createStandardRoomSchema = z.object({
@@ -149,7 +150,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
       
       // Check if user has enough balance
       const user = await storage.getUser(userId);
-      if (!user || user.balance_stars < entry_fee) {
+      if (!user || Number(user.balance_stars) < Number(entry_fee)) {
         return res.status(400).json({ message: "Insufficient balance" });
       }
       
@@ -158,7 +159,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
         id: uuidv4(),
         creator_id: userId,
         type: "standard",
-        entry_fee,
+        entry_fee: String(entry_fee),
         max_players,
         status: "waiting",
         waiting_time: 60,
@@ -174,14 +175,14 @@ export function registerRoomRoutes(app: Express, prefix: string) {
       
       // Deduct entry fee
       await storage.updateUser(userId, {
-        balance_stars: user.balance_stars - entry_fee
+        balance_stars: String(Number(user.balance_stars) - Number(entry_fee))
       });
       
       // Record transaction
       await storage.createTransaction({
         id: uuidv4(),
         user_id: userId,
-        amount: -entry_fee,
+        amount: String(-Number(entry_fee)),
         type: "entry",
         description: `Entry fee for standard room ${room.id}`,
         created_at: new Date()
@@ -208,19 +209,17 @@ export function registerRoomRoutes(app: Express, prefix: string) {
       
       // Check if user has enough balance
       const user = await storage.getUser(userId);
-      if (!user || user.balance_stars < entry_fee) {
+      if (!user || Number(user.balance_stars) < Number(entry_fee)) {
         return res.status(400).json({ message: "Insufficient balance" });
       }
-      
       // Generate a unique room code
       const code = generateRoomCode();
-      
       // Create room
       const room = await storage.createRoom({
         id: uuidv4(),
         creator_id: userId,
         type: "hero",
-        entry_fee,
+        entry_fee: String(entry_fee),
         max_players,
         status: "waiting",
         code,
@@ -238,14 +237,14 @@ export function registerRoomRoutes(app: Express, prefix: string) {
       
       // Deduct entry fee
       await storage.updateUser(userId, {
-        balance_stars: user.balance_stars - entry_fee
+        balance_stars: String(Number(user.balance_stars) - Number(entry_fee))
       });
       
       // Record transaction
       await storage.createTransaction({
         id: uuidv4(),
         user_id: userId,
-        amount: -entry_fee,
+        amount: String(-Number(entry_fee)),
         type: "entry",
         description: `Entry fee for hero room ${code}`,
         created_at: new Date()
@@ -301,14 +300,14 @@ export function registerRoomRoutes(app: Express, prefix: string) {
       
       // Deduct entry fee
       await storage.updateUser(userId, {
-        balance_stars: user.balance_stars - room.entry_fee
+        balance_stars: String(Number(user.balance_stars) - Number(room.entry_fee))
       });
       
       // Record transaction
       await storage.createTransaction({
         id: uuidv4(),
         user_id: userId,
-        amount: -room.entry_fee,
+        amount: String(-Number(room.entry_fee)),
         type: "entry",
         description: `Entry fee for ${room.type} room ${room.code || roomId}`,
         created_at: new Date()
@@ -405,6 +404,68 @@ export function registerRoomRoutes(app: Express, prefix: string) {
     } catch (error) {
       console.error("Error leaving room:", error);
       res.status(500).json({ message: "Failed to leave room" });
+    }
+  });
+  
+  // Получить количество игроков по entry_fee для стандартных комнат
+  app.get(`${prefix}/rooms/standard-counts`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const rooms = await storage.getActiveRooms("standard", 100);
+      // Агрегируем по entry_fee
+      const counts: Record<number, number> = {};
+      for (const room of rooms) {
+        const fee = Number(room.entry_fee);
+        const participants = await storage.getRoomParticipants(room.id);
+        counts[fee] = (counts[fee] || 0) + participants.length;
+      }
+      res.json({ counts });
+    } catch (error) {
+      console.error("Error fetching room counts by entry_fee:", error);
+      res.status(500).json({ message: "Failed to fetch room counts" });
+    }
+  });
+
+  // Автоподбор/создание комнаты по entry_fee
+  app.post(`${prefix}/rooms/auto-join`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const { entry_fee } = req.body;
+      if (typeof entry_fee !== 'number') {
+        return res.status(400).json({ message: "entry_fee is required" });
+      }
+      // Найти подходящую комнату
+      const roomId = await roomManager.findAvailableRoom('standard', entry_fee);
+      let room;
+      if (roomId) {
+        // Есть подходящая комната — добавляем пользователя
+        room = await storage.getRoom(roomId);
+        await storage.addParticipant({
+          room_id: roomId,
+          user_id: userId,
+          joined_at: new Date()
+        });
+        // Списываем плату
+        const user = await storage.getUser(userId);
+        if (user && Number(user.balance_stars) >= entry_fee) {
+          await storage.updateUser(userId, { balance_stars: String(Number(user.balance_stars) - entry_fee) });
+          await storage.createTransaction({
+            id: uuidv4(),
+            user_id: userId,
+            amount: String(-entry_fee),
+            type: "entry",
+            description: `Entry fee for standard room ${roomId}`,
+            created_at: new Date()
+          });
+        }
+      } else {
+        // Нет подходящей — создаём новую
+        const newRoomId = await roomManager.createRoom(userId, 'standard', entry_fee, 10);
+        room = await storage.getRoom(newRoomId);
+      }
+      res.json({ room });
+    } catch (error) {
+      console.error("Error in auto-join room:", error);
+      res.status(500).json({ message: "Failed to auto-join room" });
     }
   });
 }

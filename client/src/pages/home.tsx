@@ -15,10 +15,12 @@ interface User {
   photo_url?: string;
 }
 
+// --- КОНСТАНТЫ ЦЕН ВХОДА ---
+const ENTRY_FEES = [20, 50, 100, 200];
+
 export default function HomePage() {
   const { telegramUser } = useTelegram();
-  
-  // Fetch user data
+  // Получаем пользователя
   const { data: userData, isLoading: userLoading } = useQuery({
     queryKey: ['/api/v1/users/me'],
     queryFn: async () => {
@@ -31,56 +33,47 @@ export default function HomePage() {
   });
   const user: User | null = userData?.user || null;
 
-  // Fetch rooms
-  const { data: roomsData, isLoading: roomsLoading } = useQuery({
-    queryKey: ['/api/v1/rooms'],
-    enabled: !!telegramUser,
+  // Получаем агрегацию по количеству игроков в комнатах с каждой ценой
+  const { data: countsData, refetch: refetchCounts, isLoading: countsLoading } = useQuery({
+    queryKey: ['/api/v1/rooms/standard-counts'],
+    enabled: !!telegramUser && !!localStorage.getItem('token'),
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return { counts: {} };
+      const response = await fetch('/api/v1/rooms/standard-counts', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.json();
+    },
   });
-  const rooms: Room[] = roomsData?.rooms || [
-    // Временные данные для отображения в случае, если нет комнат с сервера
-    {
-      id: "room1",
-      creator_id: "system",
-      type: "standard",
-      entry_fee: 20,
-      max_players: 10,
-      status: "waiting",
-      created_at: new Date(),
-      participants_count: 4
-    },
-    {
-      id: "room2",
-      creator_id: "system",
-      type: "standard",
-      entry_fee: 50,
-      max_players: 10,
-      status: "waiting",
-      created_at: new Date(),
-      participants_count: 2
-    },
-    {
-      id: "room3",
-      creator_id: "system",
-      type: "standard",
-      entry_fee: 100,
-      max_players: 10,
-      status: "waiting",
-      created_at: new Date(),
-      participants_count: 6
-    },
-    {
-      id: "room4",
-      creator_id: "system",
-      type: "standard",
-      entry_fee: 200,
-      max_players: 10,
-      status: "waiting",
-      created_at: new Date(),
-      participants_count: 1
+  const roomCounts: Record<number, number> = countsData?.counts || {};
+
+  // --- АВТОПОДБОР КОМНАТЫ ---
+  const [joining, setJoining] = useState<number | null>(null);
+  const handleJoinRoom = async (entryFee: number) => {
+    if (!user) return;
+    setJoining(entryFee);
+    try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/v1/rooms/auto-join', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ entry_fee: entryFee }),
+      });
+      const data = await res.json();
+      if (data.room && data.room.id) {
+        window.location.href = `/waiting-room/${data.room.id}`;
+      }
+    } finally {
+      setJoining(null);
+      refetchCounts();
     }
-  ];
-  const isLoading = roomsLoading || userLoading;
-  
+  };
+
+  const isLoading = userLoading || countsLoading;
+
   return (
     <>
       <Header 
@@ -106,36 +99,38 @@ export default function HomePage() {
           )
         }
       />
-      
       {/* Bonus Room - вверху страницы, перед стандартными комнатами */}
       {!isLoading && (
         <div className="px-4 pt-4">
           <BonusRoomCard bonusAmount={3000} />
         </div>
       )}
-      
       <div className="p-4 grid grid-cols-2 gap-4 pb-20">
         {isLoading ? (
-          // Loading state
-          Array(6).fill(0).map((_, i) => (
+          Array(4).fill(0).map((_, i) => (
             <div 
               key={i}
               className="bg-gray-100 rounded-xl shadow-md p-3 animate-pulse h-32"
             ></div>
           ))
         ) : (
-          <>
-            {/* Standard Rooms */}
-            {rooms.filter(room => room.type === "standard").map(room => (
-              <RoomCard 
-                key={room.id} 
-                room={room} 
-                userBalance={user?.balance_stars || 0} 
+          ENTRY_FEES.map(fee => (
+            <div key={fee} onClick={() => handleJoinRoom(fee)} style={{ opacity: joining === fee ? 0.5 : 1, pointerEvents: joining ? 'none' : 'auto' }}>
+              <RoomCard
+                room={{
+                  id: `stub-${fee}`,
+                  creator_id: 'system',
+                  type: 'standard',
+                  entry_fee: fee,
+                  max_players: 10,
+                  status: 'waiting',
+                  created_at: new Date(),
+                  participants_count: roomCounts[fee] || 0,
+                }}
+                userBalance={user?.balance_stars || 0}
               />
-            ))}
-            
-            {/* Убираем Hero Room с главной страницы - она должна создаваться только через страницу Create */}
-          </>
+            </div>
+          ))
         )}
       </div>
     </>
