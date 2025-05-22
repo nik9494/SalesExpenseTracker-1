@@ -9,10 +9,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useTelegram } from "@/hooks/useTelegram";
 import { showSuccess } from "@/lib/telegram";
+import { useTranslation } from 'react-i18next';
 
 export default function BonusRoomPage() {
   const [, navigate] = useLocation();
   const { triggerHapticFeedback } = useTelegram();
+  const { t, i18n } = useTranslation();
   const [taps, setTaps] = useState(0);
   const [totalTaps, setTotalTaps] = useState(0);
   const [buffer, setBuffer] = useState(0);
@@ -194,10 +196,19 @@ export default function BonusRoomPage() {
 
   return (
     <>
-      <Header 
-        title="Bonus Room"
-        showBackButton={true}
-      />
+      <Header title={t('bonus_room')} rightContent={
+        <select
+          className="border rounded px-2 py-1 text-sm"
+          value={i18n.language}
+          onChange={e => {
+            i18n.changeLanguage(e.target.value);
+            localStorage.setItem('lang', e.target.value);
+          }}
+        >
+          <option value="ru">Рус</option>
+          <option value="en">Eng</option>
+        </select>
+      } />
       
       <div className="p-6 text-center relative">
         {/* Контейнер для конфетти */}
@@ -207,15 +218,15 @@ export default function BonusRoomPage() {
         ></div>
         
         <div className="bg-[#E7F5FF] rounded-xl p-5 shadow-md mb-8">
-          <h2 className="text-xl font-semibold text-[#0088CC] mb-3">Million Tap Challenge</h2>
+          <h2 className="text-xl font-semibold text-[#0088CC] mb-3">{t('million_tap_challenge')}</h2>
           <p className="text-sm text-telegram-gray-700 mb-4">
-            Tap 1,000,000 times in 24 hours to win 100 Stars! Your progress is saved even if you close the app.
+            {t('tap_million_times')}
           </p>
           
           <ProgressBar
             value={totalTaps}
             max={1000000}
-            label="Progress"
+            label={t('progress')}
             labelValue={`${formatNumber(totalTaps)} / 1,000,000`}
             color="primary"
             height="medium"
@@ -223,14 +234,14 @@ export default function BonusRoomPage() {
           />
           
           <div className="text-sm text-telegram-gray-700 mb-4">
-            <i className="far fa-clock mr-1"></i> Time remaining: <span className="font-medium">{formatLongTime(remainingTime)}</span>
+            <i className="far fa-clock mr-1"></i> {t('time_remaining')}: <span className="font-medium">{formatLongTime(remainingTime)}</span>
           </div>
           
           <div className="text-sm text-[#0088CC] font-medium">
             <i className="fas fa-star text-yellow-400 mr-1"></i> 
-            Earned so far: <span className="font-semibold">{rewardEarned}</span> Stars
+            {t('earned_so_far')}: <span className="font-semibold">{rewardEarned}</span> Stars
             <span className="text-xs text-telegram-gray-500 block mt-1">
-              (You get 10 Stars for every 100,000 taps)
+              ({t('you_get_stars')})
             </span>
           </div>
         </div>
@@ -254,14 +265,14 @@ export default function BonusRoomPage() {
             className="bg-telegram-gray-200 text-telegram-gray-800 py-2.5 px-8 rounded-full text-sm font-medium"
             onClick={() => pauseBonus()}
           >
-            Pause Challenge
+            {t('pause_challenge')}
           </button>
         ) : (
           <button 
             className="bg-[#0088CC] text-white py-2.5 px-8 rounded-full text-sm font-medium"
             onClick={() => startBonus()}
           >
-            Start Challenge
+            {t('start_challenge')}
           </button>
         )}
         

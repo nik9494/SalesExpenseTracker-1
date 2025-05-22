@@ -3,11 +3,13 @@ import { Header } from "@/components/layout/Header";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Player } from "@shared/types";
+import { useTranslation } from 'react-i18next';
 
 type LeaderboardPeriod = "today" | "week" | "alltime";
 
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState<LeaderboardPeriod>("today");
+  const { t, i18n } = useTranslation();
 
   // Fetch leaderboard data
   const { data, isLoading } = useQuery({
@@ -34,8 +36,7 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      <Header title="Leaderboard" />
-
+      <Header title={t('leaderboard')} />
       <div className="p-4 pb-20">
         {/* Time Filter */}
         <div className="flex justify-center mb-5">
@@ -47,7 +48,7 @@ export default function LeaderboardPage() {
               )}
               onClick={() => setPeriod("today")}
             >
-              Today
+              {t('today')}
             </button>
             <button 
               className={cn(
@@ -56,7 +57,7 @@ export default function LeaderboardPage() {
               )}
               onClick={() => setPeriod("week")}
             >
-              Week
+              {t('week')}
             </button>
             <button 
               className={cn(
@@ -65,7 +66,7 @@ export default function LeaderboardPage() {
               )}
               onClick={() => setPeriod("alltime")}
             >
-              All Time
+              {t('all_time')}
             </button>
           </div>
         </div>

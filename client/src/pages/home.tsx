@@ -5,6 +5,7 @@ import { BonusRoomCard } from "@/components/lobby/BonusRoomCard";
 import { Room } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import { useTelegram } from "@/hooks/useTelegram";
+import { useTranslation } from 'react-i18next';
 
 interface User {
   id: string;
@@ -20,6 +21,7 @@ const ENTRY_FEES = [20, 50, 100, 200];
 
 export default function HomePage() {
   const { telegramUser } = useTelegram();
+  const { t, i18n } = useTranslation();
   // Получаем пользователя
   const { data: userData, isLoading: userLoading } = useQuery({
     queryKey: ['/api/v1/users/me'],
@@ -73,6 +75,7 @@ export default function HomePage() {
   return (
     <>
       <Header 
+        // Название приложения всегда статичное
         title="Chance Tap"
         rightContent={
           user && (

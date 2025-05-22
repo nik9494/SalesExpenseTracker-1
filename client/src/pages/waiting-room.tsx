@@ -6,10 +6,12 @@ import { formatTime, getRandomEmoji } from "@/lib/utils";
 import { useGame } from "@/hooks/useGame";
 import { useQuery } from "@tanstack/react-query";
 import { Player } from "@shared/types";
+import { useTranslation } from 'react-i18next';
 
 export default function WaitingRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, navigate] = useLocation();
+  const { t, i18n } = useTranslation();
   const [emojis, setEmojis] = useState<{ id: string; emoji: string; x: number; y: number; }[]>([]);
   
   // Fetch user data
@@ -85,22 +87,32 @@ export default function WaitingRoomPage() {
   return (
     <>
       <Header 
-        title={`Room: ${room?.type || 'Standard'} • ${room?.entry_fee} ⭐`}
+        title={room ? `${t('room')}: ${room.type || t('standard')} • ${room.entry_fee} ⭐` : t('waiting_room')}
         showBackButton={true}
+        rightContent={
+          <select
+            className="border rounded px-2 py-1 text-sm"
+            value={i18n.language}
+            onChange={e => {
+              i18n.changeLanguage(e.target.value);
+              localStorage.setItem('lang', e.target.value);
+            }}
+          >
+            <option value="ru">Рус</option>
+            <option value="en">Eng</option>
+          </select>
+        }
       />
-      
       <div className="p-6 text-center">
-        <h2 className="text-xl font-semibold mb-4">Waiting for players</h2>
-        
+        <h2 className="text-xl font-semibold mb-4">{t('waiting_for_players')}</h2>
         <div className="mb-6 font-medium text-telegram-gray-700">
-          <i className="fas fa-clock mr-2"></i> Starting in <span className="text-[#0088CC]">{formatTime(remainingTime)}</span>
+          <i className="fas fa-clock mr-2"></i> {t('starting_in')} <span className="text-[#0088CC]">{formatTime(remainingTime)}</span>
         </div>
-
         <div className="flex justify-center mb-8">
           <div className="bg-telegram-gray-100 rounded-full px-4 py-2 text-sm font-medium">
             <i className="fas fa-users mr-2 text-[#0088CC]"></i> 
             <span>{players.length}</span> / 
-            <span>{room?.max_players || 4}</span> players
+            <span>{room?.max_players || 4}</span> {t('players')}
           </div>
         </div>
 
@@ -155,14 +167,14 @@ export default function WaitingRoomPage() {
         </div>
 
         <div className="text-sm text-telegram-gray-600 mb-6">
-          Tap on player avatars to send reactions!
+          {t('tap_on_avatars')}
         </div>
 
         <button 
           className="bg-telegram-gray-200 text-telegram-gray-600 py-2 px-6 rounded-full text-sm font-medium" 
           disabled
         >
-          Waiting for more players...
+          {t('waiting_for_more_players')}
         </button>
       </div>
     </>

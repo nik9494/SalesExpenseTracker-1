@@ -7,11 +7,13 @@ import { formatTime } from "@/lib/utils";
 import { useGame } from "@/hooks/useGame";
 import { useQuery } from "@tanstack/react-query";
 import { Player } from "@shared/types";
+import { useTranslation } from 'react-i18next';
 
 export default function GameRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, navigate] = useLocation();
   const [countdown, setCountdown] = useState<number | null>(null);
+  const { t, i18n } = useTranslation();
   
   // Fetch user data
   const { data: userData, isLoading: userLoading } = useQuery({
@@ -101,27 +103,19 @@ export default function GameRoomPage() {
   return (
     <>
       <Header 
-        title=""
+        title={room?.type ? t(room.type) : t('standard')}
         rightContent={
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center">
-              <div className="bg-[#0088CC] text-white inline-block px-2 py-0.5 rounded-full text-xs font-medium mr-2">
-                {room?.type || 'Standard'}
-              </div>
-              <div className="text-sm font-medium flex items-center">
-                <i className="fas fa-star text-yellow-400 mr-1"></i> {room?.entry_fee || 0}
-              </div>
-            </div>
-            <div className="text-center font-bold text-lg">
-              <i className="far fa-clock mr-1 text-[#0088CC]"></i>
-              <span className="text-[#0088CC]">{formatTime(remainingTime)}</span>
-            </div>
-            <div className="flex items-center">
-              <div className="bg-telegram-gray-200 text-xs px-2 py-0.5 rounded-full text-telegram-gray-700">
-                <i className="fas fa-users mr-1"></i> {players.length}/{room?.max_players || 4}
-              </div>
-            </div>
-          </div>
+          <select
+            className="border rounded px-2 py-1 text-sm"
+            value={i18n.language}
+            onChange={e => {
+              i18n.changeLanguage(e.target.value);
+              localStorage.setItem('lang', e.target.value);
+            }}
+          >
+            <option value="ru">Рус</option>
+            <option value="en">Eng</option>
+          </select>
         }
       />
       

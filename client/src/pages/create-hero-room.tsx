@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/Header";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showError, showSuccess } from "@/lib/telegram";
+import { useTranslation } from 'react-i18next';
 
 export default function CreateHeroRoomPage() {
   const [, navigate] = useLocation();
@@ -11,6 +12,7 @@ export default function CreateHeroRoomPage() {
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [gameDuration, setGameDuration] = useState(60);
   const [waitingTime, setWaitingTime] = useState(300);
+  const { t, i18n } = useTranslation();
   
   // Create a new hero room
   const { mutate: createRoom, isPending } = useMutation({
@@ -45,7 +47,7 @@ export default function CreateHeroRoomPage() {
   return (
     <>
       <Header 
-        title="Create Hero Room"
+        title={t('create_hero_room')}
         showBackButton={true}
       />
       
@@ -55,7 +57,7 @@ export default function CreateHeroRoomPage() {
           handleCreateRoom();
         }}>
           <div className="mb-5">
-            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">Entry Fee (Stars)</label>
+            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">{t('entry_fee')} (Stars)</label>
             <div className="relative">
               <input 
                 type="number" 
@@ -68,52 +70,52 @@ export default function CreateHeroRoomPage() {
               <i className="fas fa-star text-yellow-400 absolute left-3 top-1/2 transform -translate-y-1/2"></i>
             </div>
             <div className="text-xs text-telegram-gray-500 mt-1">
-              Min: 10 Stars, Max: 1000 Stars
+              {t('min_max_fee', { min: 10, max: 1000 })}
             </div>
           </div>
           
           <div className="mb-5">
-            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">Maximum Players</label>
+            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">{t('max_players')}</label>
             <select 
               className="w-full px-4 py-2 border border-telegram-gray-300 rounded-lg"
               value={maxPlayers}
               onChange={(e) => setMaxPlayers(parseInt(e.target.value))}
             >
-              <option value={2}>2 players</option>
-              <option value={4}>4 players</option>
-              <option value={8}>8 players</option>
-              <option value={12}>12 players</option>
-              <option value={20}>20 players</option>
-              <option value={30}>30 players (max)</option>
+              <option value={2}>2 {t('players')}</option>
+              <option value={4}>4 {t('players')}</option>
+              <option value={8}>8 {t('players')}</option>
+              <option value={12}>12 {t('players')}</option>
+              <option value={20}>20 {t('players')}</option>
+              <option value={30}>30 {t('players')} (max)</option>
             </select>
           </div>
           
           <div className="mb-5">
-            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">Game Duration</label>
+            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">{t('game_duration')}</label>
             <select 
               className="w-full px-4 py-2 border border-telegram-gray-300 rounded-lg"
               value={gameDuration}
               onChange={(e) => setGameDuration(parseInt(e.target.value))}
             >
-              <option value={30}>30 seconds</option>
-              <option value={60}>60 seconds</option>
-              <option value={90}>90 seconds</option>
-              <option value={120}>2 minutes</option>
-              <option value={180}>3 minutes</option>
+              <option value={30}>30 {t('seconds')}</option>
+              <option value={60}>60 {t('seconds')}</option>
+              <option value={90}>90 {t('seconds')}</option>
+              <option value={120}>2 {t('minutes')}</option>
+              <option value={180}>3 {t('minutes')}</option>
             </select>
           </div>
           
           <div className="mb-7">
-            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">Waiting Time</label>
+            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">{t('waiting_time')}</label>
             <select 
               className="w-full px-4 py-2 border border-telegram-gray-300 rounded-lg"
               value={waitingTime}
               onChange={(e) => setWaitingTime(parseInt(e.target.value))}
             >
-              <option value={60}>1 minute</option>
-              <option value={120}>2 minutes</option>
-              <option value={300}>5 minutes</option>
-              <option value={600}>10 minutes</option>
+              <option value={60}>1 {t('minute')}</option>
+              <option value={120}>2 {t('minutes')}</option>
+              <option value={300}>5 {t('minutes')}</option>
+              <option value={600}>10 {t('minutes')}</option>
             </select>
           </div>
           
@@ -124,14 +126,14 @@ export default function CreateHeroRoomPage() {
               onClick={() => navigate("/hero-room")}
               disabled={isPending}
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button 
               type="submit" 
               className="bg-amber-500 text-white py-2.5 px-6 rounded-full text-sm font-medium"
               disabled={isPending}
             >
-              {isPending ? 'Creating...' : 'Create Room'}
+              {isPending ? t('creating') + '...' : t('create_room')}
             </button>
           </div>
         </form>

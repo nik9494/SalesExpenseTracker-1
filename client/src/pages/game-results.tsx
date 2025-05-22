@@ -4,10 +4,12 @@ import { Header } from "@/components/layout/Header";
 import { useQuery } from "@tanstack/react-query";
 import { Player } from "@shared/types";
 import { cn } from "@/lib/utils";
+import { useTranslation } from 'react-i18next';
 
 export default function GameResultsPage() {
   const { gameId } = useParams<{ gameId: string }>();
   const [, navigate] = useLocation();
+  const { t, i18n } = useTranslation();
   
   // Fetch game results
   const { data, isLoading } = useQuery({
@@ -57,7 +59,19 @@ export default function GameResultsPage() {
   
   return (
     <>
-      <Header title="Game Results" />
+      <Header title={t('game_results')} rightContent={
+        <select
+          className="border rounded px-2 py-1 text-sm"
+          value={i18n.language}
+          onChange={e => {
+            i18n.changeLanguage(e.target.value);
+            localStorage.setItem('lang', e.target.value);
+          }}
+        >
+          <option value="ru">Рус</option>
+          <option value="en">Eng</option>
+        </select>
+      } />
       
       <div className="p-6 text-center">
         {isLoading ? (
@@ -69,7 +83,7 @@ export default function GameResultsPage() {
         ) : (
           <>
             <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-2">Winner!</h2>
+              <h2 className="text-xl font-semibold mb-2">{t('winner')}</h2>
               
               <div className="flex justify-center mb-4">
                 <div className="relative">
@@ -88,18 +102,18 @@ export default function GameResultsPage() {
                 {winner?.id === currentUserId ? 'You' : winner?.username}
               </h3>
               <p className="text-sm text-telegram-gray-600 mb-2">
-                with <span className="font-bold">{winner?.taps || 0}</span> taps
+                {t('with')} <span className="font-bold">{winner?.taps || 0}</span> {t('taps')}
               </p>
               
               <div className="bg-[#E7F5FF] rounded-lg p-3 inline-block">
-                <div className="text-sm text-telegram-gray-600">Prize Pool</div>
+                <div className="text-sm text-telegram-gray-600">{t('prize_pool')}</div>
                 <div className="text-2xl font-bold text-[#0088CC] flex items-center justify-center">
                   <i className="fas fa-star text-yellow-400 mr-2"></i> {game?.prize_pool || 0}
                 </div>
               </div>
             </div>
 
-            <h3 className="text-lg font-semibold mb-3">All Players</h3>
+            <h3 className="text-lg font-semibold mb-3">{t('all_players')}</h3>
             
             <div className="bg-white rounded-xl shadow-sm border border-telegram-gray-200 mb-8">
               {sortedPlayers.map((player, index) => {
@@ -125,7 +139,7 @@ export default function GameResultsPage() {
                     </div>
                     <div className="flex-1">
                       <div className="font-medium">{isCurrentUser ? 'You' : player.username}</div>
-                      <div className="text-xs text-telegram-gray-600">{player.taps || 0} taps</div>
+                      <div className="text-xs text-telegram-gray-600">{player.taps || 0} {t('taps')}</div>
                     </div>
                     <div className={cn(
                       "font-bold flex items-center",
@@ -147,13 +161,13 @@ export default function GameResultsPage() {
                 className="bg-telegram-gray-200 text-telegram-gray-800 py-2.5 px-6 rounded-full text-sm font-medium"
                 onClick={handleBackToLobby}
               >
-                Back to Lobby
+                {t('back_to_lobby')}
               </button>
               <button 
                 className="bg-[#0088CC] text-white py-2.5 px-6 rounded-full text-sm font-medium"
                 onClick={handlePlayAgain}
               >
-                Play Again
+                {t('play_again')}
               </button>
             </div>
           </>
