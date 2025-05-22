@@ -4,7 +4,7 @@ import { requireAuth } from "../utils/telegramAuth";
 
 export function registerLeaderboardRoutes(app: Express, prefix: string) {
   // Get today's leaderboard
-  app.get(`${prefix}/leaderboard/today`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/leaderboard/today`, async (req: Request, res: Response) => {
     try {
       const leaderboard = await storage.getLeaderboard('today', 10);
       res.json({ leaderboard });
@@ -15,7 +15,7 @@ export function registerLeaderboardRoutes(app: Express, prefix: string) {
   });
   
   // Get weekly leaderboard
-  app.get(`${prefix}/leaderboard/week`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/leaderboard/week`, async (req: Request, res: Response) => {
     try {
       const leaderboard = await storage.getLeaderboard('week', 10);
       res.json({ leaderboard });
@@ -26,7 +26,7 @@ export function registerLeaderboardRoutes(app: Express, prefix: string) {
   });
   
   // Get all-time leaderboard
-  app.get(`${prefix}/leaderboard/alltime`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/leaderboard/alltime`, async (req: Request, res: Response) => {
     try {
       const leaderboard = await storage.getLeaderboard('alltime', 10);
       res.json({ leaderboard });

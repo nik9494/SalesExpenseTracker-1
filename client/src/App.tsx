@@ -19,9 +19,11 @@ function App() {
   const { initTelegram } = useTelegram();
 
   useEffect(() => {
-    // Initialize Telegram Web App
+    // Инициализируем Telegram Web App только один раз за сессию
+    // (initTelegram уже защищён от повторных вызовов внутри себя)
     initTelegram();
-  }, [initTelegram]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <TooltipProvider>

@@ -20,11 +20,10 @@ export const useTelegram = () => {
   const { toast } = useToast();
 
   const initTelegram = useCallback(async () => {
-    if (isInitInProgress.current) {
-      console.log('Initialization already in progress...');
+    if (isInitInProgress.current || isInitialized) {
+      console.log('Initialization already in progress or already initialized...');
       return;
     }
-
     isInitInProgress.current = true;
     console.log('Initializing Telegram WebApp...');
 
@@ -77,7 +76,10 @@ export const useTelegram = () => {
           const data = await response.json();
           if (data.token) {
             localStorage.setItem('token', data.token);
-            await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
+            // invalidateQueries только если токен действительно изменился
+            if (localStorage.getItem('token') !== data.token) {
+              await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
+            }
           }
 
           console.log('Backend authentication response:', response);
@@ -88,8 +90,10 @@ export const useTelegram = () => {
 
           console.log('Authentication successful, setting isInitialized to true');
 
-          // После успешной авторизации сбрасываем кэш пользователя
-          await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
+          // После успешной авторизации сбрасываем кэш пользователя только если токен изменился
+          if (localStorage.getItem('token') !== data.token) {
+            await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
+          }
 
           // Show welcome message только если не показывали в этой сессии (через sessionStorage)
           if (!window.sessionStorage.getItem('tapgame_welcome_shown')) {
@@ -122,9 +126,9 @@ export const useTelegram = () => {
       console.error('Error initializing Telegram WebApp:', error);
       setIsInitialized(false);
     } finally {
-      isInitInProgress.current = false; // Сбросить флаг после завершения
+      isInitInProgress.current = false;
     }
-  }, [toast, isPopupOpen]);
+  }, [toast]);
 
   // Haptic feedback
   const triggerHapticFeedback = useCallback((style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => {
@@ -161,10 +165,9 @@ export const useTelegram = () => {
   }, []);
 
   useEffect(() => {
-    if (!isInitialized) {
-      initTelegram();
-    }
-  }, [isInitialized, initTelegram]);
+    // Убираем зависимость isInitialized, чтобы не было повторных вызовов
+    // initTelegram вызывается только один раз из App
+  }, []);
 
   return {
     telegramUser,

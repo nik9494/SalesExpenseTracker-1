@@ -26,6 +26,24 @@ const joinRoomSchema = z.object({
 });
 
 export function registerRoomRoutes(app: Express, prefix: string) {
+  // Получить количество игроков по entry_fee для стандартных комнат (ПУБЛИЧНЫЙ МАРШРУТ ДОЛЖЕН БЫТЬ ПЕРВЫМ!)
+  app.get(`${prefix}/rooms/standard-counts`, async (req: Request, res: Response) => {
+    try {
+      const rooms = await storage.getActiveRooms("standard", 100);
+      // Агрегируем по entry_fee
+      const counts: Record<number, number> = {};
+      for (const room of rooms) {
+        const fee = Number(room.entry_fee);
+        const participants = await storage.getRoomParticipants(room.id);
+        counts[fee] = (counts[fee] || 0) + participants.length;
+      }
+      res.json({ counts });
+    } catch (error) {
+      console.error("Error fetching room counts by entry_fee:", error);
+      res.status(500).json({ message: "Failed to fetch room counts" });
+    }
+  });
+  
   // Get all standard rooms
   app.get(`${prefix}/rooms`, requireAuth, async (req: Request, res: Response) => {
     try {
@@ -407,24 +425,6 @@ export function registerRoomRoutes(app: Express, prefix: string) {
     }
   });
   
-  // Получить количество игроков по entry_fee для стандартных комнат
-  app.get(`${prefix}/rooms/standard-counts`, async (req: Request, res: Response) => {
-    try {
-      const rooms = await storage.getActiveRooms("standard", 100);
-      // Агрегируем по entry_fee
-      const counts: Record<number, number> = {};
-      for (const room of rooms) {
-        const fee = Number(room.entry_fee);
-        const participants = await storage.getRoomParticipants(room.id);
-        counts[fee] = (counts[fee] || 0) + participants.length;
-      }
-      res.json({ counts });
-    } catch (error) {
-      console.error("Error fetching room counts by entry_fee:", error);
-      res.status(500).json({ message: "Failed to fetch room counts" });
-    }
-  });
-
   // Автоподбор/создание комнаты по entry_fee
   app.post(`${prefix}/rooms/auto-join`, requireAuth, async (req: Request, res: Response) => {
     try {
