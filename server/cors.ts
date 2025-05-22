@@ -2,8 +2,8 @@ import cors from 'cors';
 
 export const corsOptions = {
   origin: [
-    'https://directive-k-guest-mutual.trycloudflare.com',
-    'https://turkish-oklahoma-plates-apparel.trycloudflare.com',
+    'https://purchasing-arab-seed-quebec.trycloudflare.com',
+    'https://characters-athletics-trucks-regard.trycloudflare.com',
     'https://*.telegram.org',
     'https://web.telegram.org'
   ],

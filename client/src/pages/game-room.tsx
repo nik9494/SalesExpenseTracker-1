@@ -104,19 +104,6 @@ export default function GameRoomPage() {
     <>
       <Header 
         title={room?.type ? t(room.type) : t('standard')}
-        rightContent={
-          <select
-            className="border rounded px-2 py-1 text-sm"
-            value={i18n.language}
-            onChange={e => {
-              i18n.changeLanguage(e.target.value);
-              localStorage.setItem('lang', e.target.value);
-            }}
-          >
-            <option value="ru">Рус</option>
-            <option value="en">Eng</option>
-          </select>
-        }
       />
       
       <div className="p-0 relative h-[calc(100vh-128px)]">

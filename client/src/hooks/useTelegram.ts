@@ -46,6 +46,8 @@ export const useTelegram = () => {
       webApp.ready();
       console.log('WebApp ready called successfully');
 
+      webApp.expand();
+
       // Get user data
       const user = getTelegramUser();
       console.log('Telegram user data:', user);

@@ -1,22 +1,24 @@
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useTranslation } from 'react-i18next';
 
 interface NavItem {
-  label: string;
+  labelKey: string;
   icon: string;
   path: string;
   screen: string;
 }
 
 const navItems: NavItem[] = [
-  { label: "Home", icon: "fa-home", path: "/", screen: "home-screen" },
-  { label: "Leaders", icon: "fa-trophy", path: "/leaderboard", screen: "leaderboard-screen" },
-  { label: "Profile", icon: "fa-user", path: "/profile", screen: "profile-screen" },
-  { label: "Create", icon: "fa-plus-circle", path: "/hero-room", screen: "hero-room" },
+  { labelKey: "home", icon: "fa-home", path: "/", screen: "home-screen" },
+  { labelKey: "leaderboard", icon: "fa-trophy", path: "/leaderboard", screen: "leaderboard-screen" },
+  { labelKey: "profile", icon: "fa-user", path: "/profile", screen: "profile-screen" },
+  { labelKey: "create_room", icon: "fa-plus-circle", path: "/hero-room", screen: "hero-room" },
 ];
 
 export default function BottomNavigation() {
   const [location, navigate] = useLocation();
+  const { t } = useTranslation();
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -40,7 +42,7 @@ export default function BottomNavigation() {
             onClick={() => handleNavigate(item.path)}
           >
             <i className={`fas ${item.icon} text-lg`}></i>
-            <span className="text-xs mt-1">{item.label}</span>
+            <span className="text-xs mt-1">{t(item.labelKey)}</span>
           </button>
         );
       })}

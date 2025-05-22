@@ -35,30 +35,32 @@ export function Header({
 
   return (
     <header className={cn("px-4 py-3 bg-white shadow-sm sticky top-0 z-10 flex items-center justify-between", className)}>
-      {showBackButton ? (
-        <button className="text-[#0088CC]" onClick={handleBackClick}>
-          <i className="fas fa-arrow-left"></i>
-        </button>
-      ) : (
-        // Название приложения всегда статичное
-        <h1 className="text-xl font-bold text-[#0088CC] select-none">Chance Tap</h1>
-      )}
-      {showBackButton && (
-        <h1 className="text-lg font-medium text-center flex-1">{title}</h1>
-      )}
-      {/* Красивая иконка-переключатель языка, только одна! */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center flex-1">
+        {showBackButton ? (
+          <button className="text-[#0088CC] mr-2" onClick={handleBackClick}>
+            <i className="fas fa-arrow-left"></i>
+          </button>
+        ) : (
+          // Название приложения всегда статичное
+          <h1 className="text-xl font-bold text-[#0088CC] select-none">Chance Tap</h1>
+        )}
+        {showBackButton && (
+          <h1 className="text-lg font-medium">{title}</h1>
+        )}
+      </div>
+      {/* Правая часть хедера с фиксированной шириной */}
+      <div className="flex items-center gap-2 min-w-[120px] justify-end">
         {rightContent}
         <button
-          className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 transition"
+          className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 transition"
           onClick={() => {
             const nextLang = i18n.language === 'ru' ? 'en' : 'ru';
             handleLangChange(nextLang);
           }}
           aria-label="Switch language"
         >
-          <span className="text-base">
-            {i18n.language === 'ru' ? '🇬🇧' : '🇷🇺'}
+          <span className="text-sm font-medium">
+            {i18n.language === 'ru' ? 'En' : 'Ru'}
           </span>
         </button>
       </div>

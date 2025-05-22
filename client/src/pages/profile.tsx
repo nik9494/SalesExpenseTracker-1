@@ -158,9 +158,9 @@ export default function ProfilePage() {
                   <i className="fas fa-star text-yellow-400 mr-2"></i>
                   <span>{user.balance_stars}</span> <span className="ml-1 text-telegram-gray-600">Stars</span>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid grid-cols-3 gap-2">
                   <button 
-                    className="bg-[#0088CC] text-white py-2 rounded text-sm font-medium"
+                    className="bg-[#0088CC] text-white py-2 rounded text-sm font-medium whitespace-nowrap col-span-2"
                     onClick={handleAddStars}
                   >
                     <i className="fas fa-plus mr-1"></i> {t('add_stars')}
