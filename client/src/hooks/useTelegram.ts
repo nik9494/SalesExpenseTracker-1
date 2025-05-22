@@ -77,11 +77,9 @@ export const useTelegram = () => {
           });
           const data = await response.json();
           if (data.token) {
-            localStorage.setItem('token', data.token);
-            // invalidateQueries только если токен действительно изменился
-            if (localStorage.getItem('token') !== data.token) {
+            localStorage.setItem('token', data.token); 
               await queryClient.invalidateQueries({ queryKey: ['/api/v1/users/me'] });
-            }
+            
           }
 
           console.log('Backend authentication response:', response);
