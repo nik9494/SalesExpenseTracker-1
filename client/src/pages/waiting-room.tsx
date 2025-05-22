@@ -39,6 +39,29 @@ export default function WaitingRoomPage() {
     roomId, 
     userId: userData?.user?.id 
   });
+
+  // Функция для отправки реакции эмодзи
+  const handleSendReaction = async (playerId: string, emoji: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/v1/rooms/${roomId}/reactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          playerId,
+          emoji
+        })
+      });
+      
+      // Показываем анимацию эмодзи локально
+      createEmojiAnimation(50, 50);
+    } catch (error) {
+      console.error('Failed to send reaction:', error);
+    }
+  };
   
   // Handle player avatar click (send reaction)
   const handlePlayerClick = (player: Player) => {

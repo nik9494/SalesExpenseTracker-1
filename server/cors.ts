@@ -4,8 +4,10 @@ export const corsOptions = {
   origin: [
     'https://purchasing-arab-seed-quebec.trycloudflare.com',
     'https://characters-athletics-trucks-regard.trycloudflare.com',
-    'https://*.telegram.org',
-    'https://web.telegram.org'
+    'https://t.me',
+    'https://web.telegram.org',
+    'http://localhost:3001',
+    'http://localhost:5173'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
