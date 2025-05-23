@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next';
 export default function CreateHeroRoomPage() {
   const [, navigate] = useLocation();
   const [entryFee, setEntryFee] = useState(100);
-  const [maxPlayers, setMaxPlayers] = useState(4);
   const [gameDuration, setGameDuration] = useState(60);
   const [waitingTime, setWaitingTime] = useState(300);
   const { t, i18n } = useTranslation();
@@ -30,18 +29,33 @@ export default function CreateHeroRoomPage() {
   });
   
   // Handle form submission
-  const handleCreateRoom = () => {
-    if (entryFee < 10 || entryFee > 1000) {
-      showError('Entry fee must be between 10 and 1000 Stars');
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    createRoom({
-      entry_fee: entryFee,
-      max_players: maxPlayers,
-      game_duration: gameDuration,
-      waiting_time: waitingTime
-    });
+    try {
+      const response = await apiRequest('POST', '/api/v1/rooms/hero', {
+        entry_fee: entryFee,
+        max_players: 30,
+        game_duration: gameDuration,
+        waiting_time: waitingTime,
+        status: 'active'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        showSuccess(`Hero room created! Code: ${data.room.code}`);
+        navigate("/hero-room");
+      } else {
+        const error = await response.json();
+        if (error.message === 'Insufficient balance for room creation') {
+          showError(t('insufficient_balance_for_creation'));
+        } else {
+          showError(error.message || t('error_creating_room'));
+        }
+      }
+    } catch (error) {
+      showError(t('error_creating_room'));
+    }
   };
   
   return (
@@ -51,11 +65,8 @@ export default function CreateHeroRoomPage() {
         showBackButton={true}
       />
       
-      <div className="p-6">
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          handleCreateRoom();
-        }}>
+      <div className="p-6 pb-24">
+        <form onSubmit={handleSubmit}>
           <div className="mb-5">
             <label className="block text-sm font-medium text-telegram-gray-700 mb-1">{t('entry_fee')} (Stars)</label>
             <div className="relative">
@@ -72,22 +83,6 @@ export default function CreateHeroRoomPage() {
             <div className="text-xs text-telegram-gray-500 mt-1">
               {t('min_max_fee', { min: 10, max: 1000 })}
             </div>
-          </div>
-          
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-telegram-gray-700 mb-1">{t('max_players')}</label>
-            <select 
-              className="w-full px-4 py-2 border border-telegram-gray-300 rounded-lg"
-              value={maxPlayers}
-              onChange={(e) => setMaxPlayers(parseInt(e.target.value))}
-            >
-              <option value={2}>2 {t('players')}</option>
-              <option value={4}>4 {t('players')}</option>
-              <option value={8}>8 {t('players')}</option>
-              <option value={12}>12 {t('players')}</option>
-              <option value={20}>20 {t('players')}</option>
-              <option value={30}>30 {t('players')} (max)</option>
-            </select>
           </div>
           
           <div className="mb-5">
@@ -117,6 +112,19 @@ export default function CreateHeroRoomPage() {
               <option value={300}>5 {t('minutes')}</option>
               <option value={600}>10 {t('minutes')}</option>
             </select>
+            <div className="text-xs text-telegram-gray-500 mt-1">
+              {t('room_will_be_deleted')}
+            </div>
+          </div>
+
+          <div className="bg-amber-50 p-4 rounded-lg mb-7">
+            <h3 className="font-medium text-amber-800 mb-2">{t('room_info')}</h3>
+            <ul className="text-sm text-amber-700 space-y-2">
+              <li>• {t('min_players_info', { count: 2 })}</li>
+              <li>• {t('max_players_info', { count: 30 })}</li>
+              <li>• {t('winning_taps_info', { count: 200 })}</li>
+              <li>• {t('prize_distribution_info')}</li>
+            </ul>
           </div>
           
           <div className="grid grid-cols-2 gap-3">

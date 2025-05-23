@@ -7,12 +7,16 @@ import { useTranslation } from 'react-i18next';
 
 type LeaderboardPeriod = "today" | "week" | "alltime";
 
+interface LeaderboardResponse {
+  leaderboard: Player[];
+}
+
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState<LeaderboardPeriod>("today");
   const { t, i18n } = useTranslation();
 
   // Fetch leaderboard data
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<LeaderboardResponse>({
     queryKey: [`/api/v1/leaderboard/${period}`],
   });
 
@@ -213,7 +217,7 @@ export default function LeaderboardPage() {
 
               {leaderboardData.length === 0 && (
                 <div className="p-8 text-center text-telegram-gray-500">
-                  No data available for this period
+                  {t('no_data')}
                 </div>
               )}
             </div>

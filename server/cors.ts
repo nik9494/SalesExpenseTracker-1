@@ -2,8 +2,8 @@ import cors from 'cors';
 
 export const corsOptions = {
   origin: [
-    'https://compared-fur-seafood-governance.trycloudflare.com',
-    'https://external-released-gtk-audio.trycloudflare.com',
+    'https://lm-nano-projector-enable.trycloudflare.com',
+    'https://arthritis-rating-trades-contents.trycloudflare.com',
     'https://t.me',
     'https://web.telegram.org',
     'http://localhost:3001',

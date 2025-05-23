@@ -80,6 +80,7 @@ export const participants = pgTable("participants", {
   room_id: uuid("room_id").notNull().references(() => rooms.id, { onDelete: 'cascade' }),
   user_id: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   joined_at: timestamp("joined_at").notNull().defaultNow(),
+  is_observer: boolean("is_observer").notNull().default(false),
 }, (table) => {
   return {
     pk: primaryKey({ columns: [table.room_id, table.user_id] }),

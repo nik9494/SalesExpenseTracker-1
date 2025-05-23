@@ -14,6 +14,7 @@ export enum MessageType {
   PLAYER_JOIN = 'player_join',
   PLAYER_LEAVE = 'player_leave',
   ROOM_UPDATE = 'room_update',
+  ROOM_DELETED = 'room_deleted',
   ERROR = 'error'
 }
 
@@ -440,4 +441,26 @@ export function broadcastGameEnd(roomId: string, game: any, winner: any) {
     data: { game, winner },
     timestamp: Date.now()
   });
+}
+
+export function broadcastRoomDeleted(roomId: string) {
+  const roomParticipants = roomConnections.get(roomId);
+  if (!roomParticipants) return;
+
+  const message: WebSocketMessage = {
+    type: MessageType.ROOM_DELETED,
+    room_id: roomId,
+    timestamp: Date.now()
+  };
+
+  // Отправляем сообщение всем участникам комнаты
+  roomParticipants.forEach(userId => {
+    const connection = connections.get(userId);
+    if (connection && connection.socket.readyState === WebSocket.OPEN) {
+      connection.socket.send(JSON.stringify(message));
+    }
+  });
+
+  // Удаляем комнату из списка
+  roomConnections.delete(roomId);
 }

@@ -13,6 +13,7 @@ export default function GameRoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, navigate] = useLocation();
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [isObserver, setIsObserver] = useState<boolean>(false);
   const { t, i18n } = useTranslation();
   
   // Fetch user data
@@ -40,6 +41,20 @@ export default function GameRoomPage() {
   } = useGame({ 
     roomId, 
     userId: user?.id 
+  });
+  
+  // Fetch room data to check observer status
+  const { data: roomData } = useQuery({
+    queryKey: ['/api/v1/rooms/' + roomId],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/v1/rooms/${roomId}`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Проверяем, является ли пользователь наблюдателем
+      const participant = data.participants?.find((p: any) => p.user_id === user?.id);
+      setIsObserver(participant?.is_observer || false);
+    }
   });
   
   // Start countdown when room is ready
@@ -87,6 +102,13 @@ export default function GameRoomPage() {
     return [...players].sort((a, b) => (b.taps || 0) - (a.taps || 0));
   };
   
+  // Handle tap
+  const handleTapClick = () => {
+    if (!isObserver) {
+      handleTap();
+    }
+  };
+  
   // Render countdown overlay
   const renderCountdown = () => {
     if (countdown === null) return null;
@@ -103,128 +125,74 @@ export default function GameRoomPage() {
   return (
     <>
       <Header 
-        title={room?.type ? t(room.type) : t('standard')}
+        title={room ? `${t('room')}: ${room.type || t('standard')} • ${room.entry_fee} ⭐` : t('game_room')}
+        showBackButton={true}
       />
-      
-      <div className="p-0 relative h-[calc(100vh-128px)]">
-        {/* Круговое размещение игроков вокруг кнопки */}
-        <div className="absolute inset-0 w-full h-full flex items-center justify-center">
-          {/* Player Avatars Around Button - circular positioning */}
-          <div className="relative w-[280px] h-[280px]">
-            {/* Круглая кнопка в центре */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <TapButton 
-                onTap={handleTap}
-                disabled={!isStarted || isFinished || countdown !== null}
-                tapCount={taps}
-              />
-              <div className="text-center mt-4 text-4xl font-bold">{taps}</div>
-            </div>
-            
-            {/* Аватары игроков по кругу */}
-            {players.map((player, index) => {
-              const isCurrentUser = player.id === user?.id;
-              const playerTaps = isCurrentUser ? taps : (player.taps || 0);
-              const totalPlayers = players.length;
-              
-              // Рассчитываем позицию игрока по кругу
-              const angle = (index / totalPlayers) * 2 * Math.PI;
-              const radius = 120; // Радиус круга, по которому размещаются игроки
-              const left = 140 + radius * Math.cos(angle - Math.PI/2);
-              const top = 140 + radius * Math.sin(angle - Math.PI/2);
-              
-              return (
-                <div 
-                  key={player.id}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                  style={{
-                    left: `${left}px`,
-                    top: `${top}px`,
-                    transition: 'all 0.5s ease',
-                    zIndex: isCurrentUser ? 5 : 1
-                  }}
-                >
-                  {/* Аватар игрока */}
-                  <div className={`relative ${isCurrentUser ? 'scale-110' : ''}`}>
-                    <div className={`w-14 h-14 rounded-full overflow-hidden border-2 ${isCurrentUser ? 'border-[#0088CC]' : 'border-telegram-gray-300'}`}>
-                      <img 
-                        src={player.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.username)}&background=random`}
-                        alt={isCurrentUser ? 'You' : player.username} 
-                        className="w-full h-full object-cover" 
-                      />
-                    </div>
-                    
-                    {/* Имя игрока */}
-                    <div className="mt-1 text-xs font-medium text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-[70px] mx-auto">
-                      {isCurrentUser ? 'You' : player.username}
-                    </div>
-                    
-                    {/* Количество тапов */}
-                    <div className="mt-0.5 text-xs font-bold text-center text-[#0088CC]">
-                      {playerTaps} taps
-                    </div>
-                    
-                    {/* Индикатор прогресса (круговой) */}
-                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                      <svg className="w-full h-full" viewBox="0 0 56 56">
-                        <circle 
-                          cx="28" 
-                          cy="28" 
-                          r="26" 
-                          fill="none" 
-                          stroke="#eee" 
-                          strokeWidth="4"
-                        />
-                        <circle 
-                          cx="28" 
-                          cy="28" 
-                          r="26" 
-                          fill="none" 
-                          stroke={isCurrentUser ? "#0088CC" : "#888"} 
-                          strokeWidth="4"
-                          strokeDasharray={`${calculateProgress(playerTaps) * 1.63} 170`}
-                          transform="rotate(-90, 28, 28)"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+      <div className="p-6 text-center">
+        {isObserver && (
+          <div className="mb-4 bg-telegram-gray-100 text-telegram-gray-700 py-2 px-4 rounded-full inline-block">
+            <i className="fas fa-eye mr-2"></i> {t('observer_mode')}
           </div>
-        </div>
+        )}
         
-        {/* Отображение полных прогресс-баров игроков вверху экрана */}
-        <div className="absolute top-6 left-0 right-0 px-4 space-y-3">
-          {getSortedPlayers().map((player) => {
-            const isCurrentUser = player.id === user?.id;
-            const playerTaps = isCurrentUser ? taps : (player.taps || 0);
-            
-            return (
-              <div className="flex items-center" key={`bar-${player.id}`}>
-                <div className={`w-8 h-8 rounded-full overflow-hidden mr-2 border-2 ${isCurrentUser ? 'border-[#0088CC]' : 'border-telegram-gray-300'}`}>
-                  <img 
-                    src={player.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.username)}&background=random`}
-                    alt={isCurrentUser ? 'You' : player.username} 
-                    className="w-full h-full object-cover" 
-                  />
-                </div>
-                <ProgressBar
-                  value={playerTaps}
-                  max={getMaxTaps()}
-                  label={isCurrentUser ? 'You' : player.username}
-                  labelValue={playerTaps}
-                  color={isCurrentUser ? 'primary' : 'gray'}
-                  className="flex-1"
-                />
+        {countdown !== null ? (
+          <div className="text-4xl font-bold mb-8">
+            {countdown === 0 ? 'GO!' : countdown}
+          </div>
+        ) : (
+          <>
+            <div className="mb-8">
+              <ProgressBar 
+                value={remainingTime} 
+                max={room?.duration || 60} 
+              />
+              <div className="text-sm text-telegram-gray-600 mt-2">
+                {formatTime(remainingTime)}
               </div>
-            );
-          })}
-        </div>
-        
-        {/* Countdown overlay */}
-        {renderCountdown()}
+            </div>
+
+            <div className="relative h-64 w-64 mx-auto mb-8">
+              <TapButton 
+                onClick={handleTapClick}
+                disabled={isObserver}
+                className={isObserver ? 'opacity-50 cursor-not-allowed' : ''}
+              />
+              
+              {/* Players positioned in a circle */}
+              {players.map((player, index) => {
+                const totalPlayers = players.length;
+                const angle = (Math.PI * 2 * index) / totalPlayers;
+                const radius = 100; // Distance from center
+                const left = 50 + Math.sin(angle) * radius;
+                const top = 50 + Math.cos(angle) * radius;
+                
+                return (
+                  <div 
+                    key={player.id}
+                    className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                    style={{ 
+                      left: `${left}%`, 
+                      top: `${top}%` 
+                    }}
+                  >
+                    <PlayerAvatar 
+                      player={player} 
+                      isCurrentUser={player.id === user?.id}
+                      isReady={true}
+                      taps={taps[player.id] || 0}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {!isObserver && (
+              <div className="text-sm text-telegram-gray-600 mb-6">
+                {t('tap_to_win')}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </>
   );

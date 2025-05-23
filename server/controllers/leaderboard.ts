@@ -1,6 +1,6 @@
 import { Express, Request, Response } from "express";
 import { storage } from "../storage";
-import { requireAuth } from "../utils/telegramAuth";
+import { jwtAuth } from "../utils/telegramAuth";
 
 export function registerLeaderboardRoutes(app: Express, prefix: string) {
   // Get today's leaderboard
@@ -37,7 +37,7 @@ export function registerLeaderboardRoutes(app: Express, prefix: string) {
   });
   
   // Get user's ranking (where they stand on the leaderboard)
-  app.get(`${prefix}/leaderboard/me`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/leaderboard/me`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       

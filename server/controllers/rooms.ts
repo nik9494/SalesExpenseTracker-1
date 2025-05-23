@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { generateRoomCode } from "../utils/helpers";
-import { requireAuth } from "../utils/telegramAuth";
+import { jwtAuth } from "../utils/telegramAuth";
 import { roomManager } from "../utils/roomManager";
 
 // Room creation schema
@@ -17,7 +17,8 @@ const createHeroRoomSchema = z.object({
   entry_fee: z.number().min(10).max(1000),
   max_players: z.number().min(2).max(30),
   game_duration: z.number().min(30).max(180),
-  waiting_time: z.number().min(30).max(600)
+  waiting_time: z.number().min(30).max(600),
+  status: z.enum(['waiting', 'active', 'finished']).default('active')
 });
 
 // Join room schema
@@ -45,7 +46,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
   });
   
   // Get all standard rooms
-  app.get(`${prefix}/rooms`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/rooms`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const rooms = await storage.getActiveRooms("standard");
       
@@ -67,8 +68,49 @@ export function registerRoomRoutes(app: Express, prefix: string) {
     }
   });
   
+  // Get hero rooms
+  app.get(`${prefix}/rooms/hero`, jwtAuth, async (req: Request, res: Response) => {
+    try {
+      const rooms = await storage.getActiveRooms("hero");
+      const userId = req.user!.id;
+      
+      // Get participant count and creator info for each room
+      const roomsWithDetails = await Promise.all(
+        rooms.map(async (room) => {
+          const participants = await storage.getRoomParticipants(room.id);
+          const creator = await storage.getUser(room.creator_id);
+          
+          return {
+            ...room,
+            participants_count: participants.length,
+            creator: creator ? {
+              id: creator.id,
+              username: creator.username,
+              photo_url: creator.photo_url
+            } : null
+          };
+        })
+      );
+      
+      // Get current user info
+      const user = await storage.getUser(userId);
+      
+      res.json({ 
+        rooms: roomsWithDetails,
+        user: user ? {
+          id: user.id,
+          username: user.username,
+          photo_url: user.photo_url
+        } : null
+      });
+    } catch (error) {
+      console.error("Error fetching hero rooms:", error);
+      res.status(500).json({ message: "Failed to fetch hero rooms" });
+    }
+  });
+  
   // Get a specific room
-  app.get(`${prefix}/rooms/:roomId`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/rooms/:roomId`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const { roomId } = req.params;
       const room = await storage.getRoom(roomId);
@@ -107,38 +149,8 @@ export function registerRoomRoutes(app: Express, prefix: string) {
     }
   });
   
-  // Get hero rooms
-  app.get(`${prefix}/rooms/hero`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const rooms = await storage.getActiveRooms("hero");
-      
-      // Get participant count and creator info for each room
-      const roomsWithDetails = await Promise.all(
-        rooms.map(async (room) => {
-          const participants = await storage.getRoomParticipants(room.id);
-          const creator = await storage.getUser(room.creator_id);
-          
-          return {
-            ...room,
-            participants_count: participants.length,
-            creator: creator ? {
-              id: creator.id,
-              username: creator.username,
-              photo_url: creator.photo_url
-            } : null
-          };
-        })
-      );
-      
-      res.json({ rooms: roomsWithDetails });
-    } catch (error) {
-      console.error("Error fetching hero rooms:", error);
-      res.status(500).json({ message: "Failed to fetch hero rooms" });
-    }
-  });
-  
   // Get hero room by code
-  app.get(`${prefix}/rooms/hero/:code`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/rooms/hero/:code`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const { code } = req.params;
       const room = await storage.getRoomByCode(code);
@@ -155,7 +167,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
   });
   
   // Create a standard room
-  app.post(`${prefix}/rooms/standard`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/rooms/standard`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validation = createStandardRoomSchema.safeParse(req.body);
@@ -214,7 +226,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
   });
   
   // Create a hero room
-  app.post(`${prefix}/rooms/hero`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/rooms/hero`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const validation = createHeroRoomSchema.safeParse(req.body);
@@ -225,13 +237,15 @@ export function registerRoomRoutes(app: Express, prefix: string) {
       
       const { entry_fee, max_players, game_duration, waiting_time } = validation.data;
       
-      // Check if user has enough balance
+      // Check if user has enough balance for room creation
       const user = await storage.getUser(userId);
-      if (!user || Number(user.balance_stars) < Number(entry_fee)) {
-        return res.status(400).json({ message: "Insufficient balance" });
+      if (!user || Number(user.balance_stars) < 50) {
+        return res.status(400).json({ message: "Insufficient balance for room creation" });
       }
+
       // Generate a unique room code
       const code = generateRoomCode();
+      
       // Create room
       const room = await storage.createRoom({
         id: uuidv4(),
@@ -253,20 +267,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
         joined_at: new Date()
       });
       
-      // Deduct entry fee
-      await storage.updateUser(userId, {
-        balance_stars: String(Number(user.balance_stars) - Number(entry_fee))
-      });
-      
-      // Record transaction
-      await storage.createTransaction({
-        id: uuidv4(),
-        user_id: userId,
-        amount: String(-Number(entry_fee)),
-        type: "entry",
-        description: `Entry fee for hero room ${code}`,
-        created_at: new Date()
-      });
+      // Не списываем средства с организатора
       
       res.status(201).json({ room });
     } catch (error) {
@@ -276,10 +277,11 @@ export function registerRoomRoutes(app: Express, prefix: string) {
   });
   
   // Join a room
-  app.post(`${prefix}/rooms/:roomId/join`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/rooms/:roomId/join`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const { roomId } = req.params;
       const userId = req.user!.id;
+      const { isObserver } = req.body;
       
       // Check if room exists and is in waiting state
       const room = await storage.getRoom(roomId);
@@ -297,48 +299,50 @@ export function registerRoomRoutes(app: Express, prefix: string) {
         return res.json({ message: "Already joined this room" });
       }
       
-      // Check if room is full
+      // Check if room is full (только если это не наблюдатель)
       const participants = await storage.getRoomParticipants(roomId);
-      if (participants.length >= room.max_players) {
+      if (participants.length >= room.max_players && !isObserver) {
         return res.status(400).json({ message: "Room is full" });
       }
       
-      // Check if user has enough balance
-      const user = await storage.getUser(userId);
-      if (!user || user.balance_stars < room.entry_fee) {
-        return res.status(400).json({ message: "Insufficient balance" });
+      // Проверяем баланс только если это не наблюдатель и не создатель hero-комнаты
+      if (!isObserver && !(room.type === 'hero' && room.creator_id === userId)) {
+        const user = await storage.getUser(userId);
+        if (!user || Number(user.balance_stars) < Number(room.entry_fee)) {
+          return res.status(400).json({ message: "Insufficient balance" });
+        }
+        
+        // Deduct entry fee
+        await storage.updateUser(userId, {
+          balance_stars: String(Number(user.balance_stars) - Number(room.entry_fee))
+        });
+        
+        // Record transaction
+        await storage.createTransaction({
+          id: uuidv4(),
+          user_id: userId,
+          amount: String(-Number(room.entry_fee)),
+          type: "entry",
+          description: `Entry fee for ${room.type} room ${room.code || roomId}`,
+          created_at: new Date()
+        });
       }
       
       // Add user as participant
       await storage.addParticipant({
         room_id: roomId,
         user_id: userId,
-        joined_at: new Date()
+        joined_at: new Date(),
+        is_observer: isObserver || false
       });
       
-      // Deduct entry fee
-      await storage.updateUser(userId, {
-        balance_stars: String(Number(user.balance_stars) - Number(room.entry_fee))
-      });
-      
-      // Record transaction
-      await storage.createTransaction({
-        id: uuidv4(),
-        user_id: userId,
-        amount: String(-Number(room.entry_fee)),
-        type: "entry",
-        description: `Entry fee for ${room.type} room ${room.code || roomId}`,
-        created_at: new Date()
-      });
-      
-      // Check if room is now full to start the game
+      // Check if room is now full to start the game (только если это не наблюдатель)
       const updatedParticipants = await storage.getRoomParticipants(roomId);
-      if (updatedParticipants.length >= room.max_players) {
-        // Trigger game start event
-        await storage.updateRoom(roomId, { status: "active" });
+      if (updatedParticipants.length >= room.max_players && !isObserver) {
+        await roomManager.startGame(roomId);
       }
       
-      res.json({ success: true, room });
+      res.json({ message: "Successfully joined the room" });
     } catch (error) {
       console.error("Error joining room:", error);
       res.status(500).json({ message: "Failed to join room" });
@@ -346,7 +350,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
   });
   
   // Leave a room
-  app.post(`${prefix}/rooms/:roomId/leave`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/rooms/:roomId/leave`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const { roomId } = req.params;
       const userId = req.user!.id;
@@ -426,7 +430,7 @@ export function registerRoomRoutes(app: Express, prefix: string) {
   });
   
   // Автоподбор/создание комнаты по entry_fee
-  app.post(`${prefix}/rooms/auto-join`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/rooms/auto-join`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const { entry_fee } = req.body;

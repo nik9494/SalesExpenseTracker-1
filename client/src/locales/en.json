@@ -6,6 +6,7 @@
   "join_room": "Join Room",
   "create_room": "Create",
   "create_hero_room": "Create Hero Room",
+  "create_hero_room_description": "Create your own Hero room with customizable settings",
   "insufficient_balance": "Insufficient balance",
   "room_not_found": "Room not found",
   "already_joined": "Already joined this room",
@@ -59,5 +60,18 @@
   "tap_on_avatars": "Tap on player avatars to send reactions!",
   "waiting_for_more_players": "Waiting for more players...",
   "bonus_room": "Bonus Room",
-  "hero_room": "Hero Room"
+  "hero_room": "Hero Room",
+  "join_hero_room": "Join Hero Room",
+  "enter_room_code": "Enter room code",
+  "enter_room_code_placeholder": "Enter code",
+  "active_hero_rooms": "Active Hero Rooms",
+  "no_active_hero_rooms": "No active Hero rooms",
+  "entry_fee": "Entry Fee",
+  "min_max_fee": "Min {{min}}, max {{max}} stars",
+  "max_players": "Max Players",
+  "game_duration": "Game Duration",
+  "waiting_time": "Waiting Time",
+  "seconds": "seconds",
+  "minutes": "minutes",
+  "minute": "minute"
 }

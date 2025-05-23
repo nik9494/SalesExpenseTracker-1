@@ -1,12 +1,12 @@
 import { Express, Request, Response } from "express";
 import { storage } from "../storage";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../utils/telegramAuth";
+import { jwtAuth } from "../utils/telegramAuth";
 import { broadcastGameStart, broadcastGameEnd } from "../websocket";
 
 export function registerGameRoutes(app: Express, prefix: string) {
   // Start a game (manually or automatically when room is full)
-  app.post(`${prefix}/games/start`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/games/start`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const { room_id } = req.body;
       
@@ -66,7 +66,7 @@ export function registerGameRoutes(app: Express, prefix: string) {
   });
   
   // Get game data
-  app.get(`${prefix}/games/:gameId`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/games/:gameId`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const { gameId } = req.params;
       
@@ -218,7 +218,7 @@ export function registerGameRoutes(app: Express, prefix: string) {
   }
   
   // Get user's game history
-  app.get(`${prefix}/users/games`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/users/games`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       
@@ -232,7 +232,7 @@ export function registerGameRoutes(app: Express, prefix: string) {
   });
   
   // Add bonus taps
-  app.post(`${prefix}/bonus/tap`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/bonus/tap`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       const { count } = req.body;
@@ -298,7 +298,7 @@ export function registerGameRoutes(app: Express, prefix: string) {
   });
   
   // Start bonus challenge
-  app.post(`${prefix}/bonus/start`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/bonus/start`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       
@@ -332,7 +332,7 @@ export function registerGameRoutes(app: Express, prefix: string) {
   });
   
   // Get bonus status
-  app.get(`${prefix}/bonus/status`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${prefix}/bonus/status`, jwtAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
       
@@ -361,7 +361,7 @@ export function registerGameRoutes(app: Express, prefix: string) {
   });
   
   // Pause bonus challenge
-  app.post(`${prefix}/bonus/pause`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${prefix}/bonus/pause`, jwtAuth, async (req: Request, res: Response) => {
     try {
       // This is just a convenience endpoint - we don't actually pause
       // since the progress is saved in the database

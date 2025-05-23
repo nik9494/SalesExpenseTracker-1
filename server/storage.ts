@@ -31,6 +31,7 @@ export interface IStorage {
   getActiveRooms(type?: string, limit?: number): Promise<Room[]>;
   createRoom(room: InsertRoom): Promise<Room>;
   updateRoom(id: string, data: Partial<Omit<Room, "id">>): Promise<Room | undefined>;
+  deleteRoom(id: string): Promise<boolean>;
 
   // Participant operations
   getParticipant(roomId: string, userId: string): Promise<Participant | undefined>;
@@ -174,6 +175,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rooms.id, id))
       .returning();
     return updatedRoom;
+  }
+
+  async deleteRoom(id: string): Promise<boolean> {
+    console.log(`[Storage] Deleting room ${id}`);
+    try {
+      // Сначала удаляем всех участников
+      await db
+        .delete(participants)
+        .where(eq(participants.room_id, id));
+      console.log(`[Storage] Deleted participants for room ${id}`);
+
+      // Затем удаляем саму комнату
+      const result = await db
+        .delete(rooms)
+        .where(eq(rooms.id, id));
+      console.log(`[Storage] Deleted room ${id}, result:`, result);
+
+      return true;
+    } catch (error) {
+      console.error(`[Storage] Error deleting room ${id}:`, error);
+      return false;
+    }
   }
 
   // Participant operations

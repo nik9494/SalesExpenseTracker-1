@@ -22,6 +22,7 @@ export interface Player {
   taps?: number;
   stars_won?: number;
   total_taps?: number;
+  is_observer?: boolean;
 }
 
 // Room type
